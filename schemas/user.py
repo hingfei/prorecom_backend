@@ -1,6 +1,6 @@
 import strawberry
 from sqlalchemy import select, delete
-from typing import Optional
+from typing import Optional, List
 # from models import user
 from conn import get_session, User as UserModel
 from strawberry.types import Info
@@ -59,7 +59,7 @@ class Query:
             return User.marshal(db_user) if db_user else None
 
     @strawberry.field
-    async def user_listing(self) -> list[User]:
+    async def user_listing(self) -> List[User]:
         async with get_session() as s:
             sql = select(UserModel).order_by(UserModel.id)
             db_user = (await s.execute(sql)).scalars().unique().all()

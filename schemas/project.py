@@ -1,6 +1,6 @@
 import strawberry
 from sqlalchemy import select, delete
-from typing import Optional
+from typing import Optional, List
 # from models import project
 from conn import get_session, Project as ProjectModel
 from strawberry.types import Info
@@ -24,16 +24,16 @@ class Project:
     def marshal(cls, model: ProjectModel) -> "Project":
         return cls(
             project_id=strawberry.ID(str(model.project_id)),
-            project_name= model.project_name,
-            company_name= model.company_name,
-            company_location= model.company_location,
-            project_types= model.project_types,
-            post_dates= model.post_dates,
-            project_salary= model.project_salary,
-            project_desc= model.project_desc,
-            project_req= model.project_req,
-            project_skills= model.project_skills,
-            project_exp_lvl= model.project_exp_lvl,
+            project_name=model.project_name,
+            company_name=model.company_name,
+            company_location=model.company_location,
+            project_types=model.project_types,
+            post_dates=model.post_dates,
+            project_salary=model.project_salary,
+            project_desc=model.project_desc,
+            project_req=model.project_req,
+            project_skills=model.project_skills,
+            project_exp_lvl=model.project_exp_lvl,
         )
 
 
@@ -73,7 +73,7 @@ class Query:
             return Project.marshal(db_project) if db_project else None
 
     @strawberry.field
-    async def project_listing(self) -> list[Project]:
+    async def project_listing(self) -> List[Project]:
         async with get_session() as s:
             sql = select(ProjectModel).order_by(ProjectModel.project_id)
             db_project = (await s.execute(sql)).scalars().unique().all()
