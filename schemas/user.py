@@ -1,25 +1,36 @@
 import strawberry
 from sqlalchemy import select, delete
 from typing import Optional, List
-# from models import user
 from conn import get_session, User as UserModel
 from strawberry.types import Info
+from sqlalchemy.types import Enum
+
+
+@strawberry.type
+class UserType:
+    user_id: strawberry.ID
+    user_name: str
+    user_email: str
+    password: str
+    user_type: str
 
 
 @strawberry.type
 class User:
-    id: strawberry.ID
+    user_id: strawberry.ID
     user_name: str
     user_email: str
     password: str
+    user_type: str
 
     @classmethod
     def marshal(cls, model: UserModel) -> "User":
         return cls(
-            id=strawberry.ID(str(model.id)),
+            user_id=strawberry.ID(str(model.user_id)),
             user_name=model.user_name,
             user_email=model.user_email,
-            password=model.password
+            password=model.password,
+            user_type=model.user_type
         )
 
 
@@ -43,6 +54,12 @@ class UserDeleteMessage:
     message: str = "User deleted successfully"
 
 
+@strawberry.type
+class UserResponse:
+    success: bool
+    user: Optional[UserType] = None
+    message: Optional[str]
+
 # Responses
 AddUserResponse = strawberry.union("AddUserResponse", (User, UserExists))
 UpdateUserResponse = strawberry.union("UpdateUserResponse", (UserUpdateMessage, UserNotFound))
@@ -52,16 +69,16 @@ DeleteUserResponse = strawberry.union("DeleteUserResponse", (UserDeleteMessage, 
 @strawberry.type
 class Query:
     @strawberry.field
-    async def user_detail(self, info: Info, id: int) -> Optional[User]:
+    async def user_detail(self, info: Info, user_id: int) -> Optional[User]:
         async with get_session() as s:
-            user_query = select(UserModel).where(UserModel.id == id)
+            user_query = select(UserModel).where(UserModel.user_id == user_id)
             db_user = (await s.execute(user_query)).scalars().first()
             return User.marshal(db_user) if db_user else None
 
     @strawberry.field
     async def user_listing(self) -> List[User]:
         async with get_session() as s:
-            sql = select(UserModel).order_by(UserModel.id)
+            sql = select(UserModel).order_by(UserModel.user_id)
             db_user = (await s.execute(sql)).scalars().unique().all()
         return [User.marshal(loc) for loc in db_user]
 
@@ -81,10 +98,10 @@ class Mutation:
         return User.marshal(db_user)
 
     @strawberry.mutation
-    async def update_user(self, id: int, user_name: Optional[str] = None, user_email: Optional[str] = None,
+    async def update_user(self, user_id: int, user_name: Optional[str] = None, user_email: Optional[str] = None,
                           password: Optional[str] = None) -> UpdateUserResponse:
         async with get_session() as s:
-            db_user = await s.get(UserModel, id)
+            db_user = await s.get(UserModel, user_id)
             if db_user is None:
                 return UserNotFound()
 
@@ -97,12 +114,12 @@ class Mutation:
 
             await s.commit()
 
-        return UserUpdateMessage(message=f"User with id {id} updated successfully")
+        return UserUpdateMessage(message=f"User with id {user_id} updated successfully")
 
     @strawberry.mutation
-    async def delete_user(self, id: int) -> DeleteUserResponse:
+    async def delete_user(self, user_id: int) -> DeleteUserResponse:
         async with get_session() as s:
-            sql = delete(UserModel).where(UserModel.id == id)
+            sql = delete(UserModel).where(UserModel.user_id == user_id)
             db_user = await s.execute(sql)
             # db_user = await s.get(user.User, id)
             if db_user.rowcount == 0:
@@ -112,3 +129,19 @@ class Mutation:
             await s.commit()
 
         return UserDeleteMessage
+
+    @strawberry.mutation
+    async def login(self, user_name: str, password: str) -> UserResponse:
+        async with get_session() as s:
+            try:
+                user_query = select(UserModel).where(UserModel.user_name == user_name)
+                db_user = (await s.execute(user_query)).scalars().first()
+                if db_user is None:
+                    return UserResponse(success=False, user=None, message='Account not found')
+                if db_user and db_user.password != password:
+                    return UserResponse(success=False, user=None, message='Password is incorrect')
+                else:
+                    return UserResponse(success=True, user= User.marshal(db_user), message='Login successfully')
+
+            except Exception as e:
+                return UserResponse(success=False, user=None, message=str(e))
