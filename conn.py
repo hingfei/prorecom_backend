@@ -10,7 +10,7 @@ from sqlalchemy import Column, Integer, String, select
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 metadata = MetaData()
-engine = create_async_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False},  echo=True)
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, echo=True)
 async_sessionmaker = sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -171,7 +171,6 @@ async def import_csv():
                     project_exp_lvl=row['exp_lvl']
                 )
 
-
                 # Add each skill to the project
                 print('here?')
                 for skill_name in skills:
@@ -201,4 +200,3 @@ if __name__ == "__main__":
     # asyncio.run(import_csv())
     asyncio.run(add_column())
     print("Done.")
-
