@@ -5,7 +5,7 @@ from conn import get_session, JobSeeker as JobSeekerModel, User as UserModel, Co
 from sqlalchemy.orm import selectinload
 from strawberry.types import Info
 from strawberry.file_uploads import Upload
-
+import bcrypt
 from schemas.user import UserType
 
 
@@ -70,6 +70,11 @@ class JobSeekerResponse:
     message: Optional[str]
 
 
+def hash_password(password: str) -> str:
+    hashed_bytes = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return hashed_bytes.decode('utf-8')
+
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -110,10 +115,12 @@ class Mutation:
                     return JobSeekerResponse(success=False, job_seeker=None,
                                              message=f"Email already exist.")
 
+                hashed_password = hash_password(input.password)
+
                 job_seeker = JobSeekerModel(
                     user_name=input.user_name,
                     user_email=input.user_email,
-                    password=input.password,
+                    password=hashed_password,
                     seeker_name=input.seeker_name,
                     seeker_age=input.seeker_age,
                     seeker_gender=input.seeker_gender,
@@ -152,8 +159,6 @@ class Mutation:
                 job_seeker.user_name = input.user_name
             if input.user_email is not None:
                 job_seeker.user_email = input.user_email
-            if input.password is not None:
-                job_seeker.password = input.password
             if input.seeker_name is not None:
                 job_seeker.seeker_name = input.seeker_name
             if input.seeker_age is not None:
@@ -213,22 +218,20 @@ class Mutation:
         async with get_session() as session:
             try:
                 # Get the job seeker by the current user ID
-                print('run here1')
                 user = await session.get(UserModel, user_id)
-                print('run here2')
                 if not user:
                     return JobSeekerResponse(success=False, job_seeker=None,
                                              message=f"Job Seeker not found.")
 
                 # Verify the current password
-                if current_password != user.password:
+                if not bcrypt.checkpw(current_password.encode('utf-8'), user.password.encode('utf-8')):
                     return JobSeekerResponse(success=False, job_seeker=None,
                                              message=f"Invalid current password.")
 
-                print('run here')
                 # Update the password
+                hashed_password = hash_password(new_password)
                 if user.password is not None:
-                    user.password = new_password
+                    user.password = hashed_password
 
                 await session.commit()
 

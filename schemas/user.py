@@ -3,7 +3,23 @@ from sqlalchemy import select, delete
 from typing import Optional, List
 from conn import get_session, User as UserModel
 from strawberry.types import Info
-from sqlalchemy.types import Enum
+from jwt import encode, decode, InvalidTokenError
+from datetime import datetime, timedelta
+from decouple import config
+import bcrypt
+
+
+JWT_SECRET = config('secret')
+JWT_ALGORITHM = config('algorithm')
+EXPIRATION_TIME = timedelta(minutes=30)
+
+
+def decode_token(token: str):
+    try:
+        payload = decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except InvalidTokenError:
+        raise Exception("Invalid token")
 
 
 @strawberry.type
@@ -13,6 +29,15 @@ class UserType:
     user_email: str
     password: str
     user_type: str
+
+    # This method generates a JWT token for the user
+    def generate_token(self):
+        payload = {
+            "user_id": self.user_id,
+            "exp": datetime.utcnow() + EXPIRATION_TIME
+        }
+        token = encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        return token
 
 
 @strawberry.type
@@ -60,6 +85,15 @@ class UserResponse:
     user: Optional[UserType] = None
     message: Optional[str]
 
+
+@strawberry.type
+class AuthResponse:
+    success: bool
+    token: Optional[str]
+    user: Optional[UserType] = None
+    message: Optional[str]
+
+
 # Responses
 AddUserResponse = strawberry.union("AddUserResponse", (User, UserExists))
 UpdateUserResponse = strawberry.union("UpdateUserResponse", (UserUpdateMessage, UserNotFound))
@@ -68,6 +102,29 @@ DeleteUserResponse = strawberry.union("DeleteUserResponse", (UserDeleteMessage, 
 
 @strawberry.type
 class Query:
+    @strawberry.field
+    async def me(self, info: Info) -> UserType:
+        async with get_session() as session:
+            user_id = await info.context.get_current_user
+            if user_id is None:
+                raise ValueError("User not authenticated")
+            from controllers.index import SessionExpired
+            try:
+                user_query = select(UserModel).where(UserModel.user_id == user_id)
+                user = (await session.execute(user_query)).scalars().first()
+                if not user:
+                    raise ValueError("User not found")
+
+                return UserType(
+                    user_id=user.user_id,
+                    user_name=user.user_name,
+                    user_email=user.user_email,
+                    user_type=user.user_type,
+                    password=user.password
+                )
+            except SessionExpired:
+                raise ValueError("Session has expired")
+
     @strawberry.field
     async def user_detail(self, info: Info, user_id: int) -> Optional[User]:
         async with get_session() as s:
@@ -131,17 +188,24 @@ class Mutation:
         return UserDeleteMessage
 
     @strawberry.mutation
-    async def login(self, user_name: str, password: str) -> UserResponse:
+    async def login(self, user_name: str, password: str) -> AuthResponse:
         async with get_session() as s:
             try:
                 user_query = select(UserModel).where(UserModel.user_name == user_name)
                 db_user = (await s.execute(user_query)).scalars().first()
                 if db_user is None:
-                    return UserResponse(success=False, user=None, message='Account not found')
-                if db_user and db_user.password != password:
-                    return UserResponse(success=False, user=None, message='Password is incorrect')
-                else:
-                    return UserResponse(success=True, user= User.marshal(db_user), message='Login successfully')
+                    return AuthResponse(success=False, token=None, user=None, message='Account not found')
+                if not bcrypt.checkpw(password.encode('utf-8'), db_user.password.encode('utf-8')):
+                    return AuthResponse(success=False, token=None, user=None, message='Password is incorrect')
+                user = UserType(
+                    user_id=db_user.user_id,
+                    user_name=db_user.user_name,
+                    user_email=db_user.user_email,
+                    password=db_user.password,
+                    user_type=db_user.user_type
+                )
+                token = user.generate_token()
+                return AuthResponse(success=True, token=token, user=User.marshal(db_user), message='Login successfully')
 
             except Exception as e:
-                return UserResponse(success=False, user=None, message=str(e))
+                return AuthResponse(success=False, token=None, user=None, message=str(e))
