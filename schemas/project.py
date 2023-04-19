@@ -8,6 +8,7 @@ from conn import get_session, Project as ProjectModel, Skill as SkillModel, Proj
 from strawberry.types import Info
 
 from schemas.company import CompanyType
+from schemas.skill import SkillType
 
 
 @strawberry.input
@@ -33,12 +34,6 @@ class UpdateProjectInput:
     project_req: Optional[str] = None
     project_exp_lvl: Optional[str] = None
     skills: Optional[List[str]] = None
-
-
-@strawberry.type
-class SkillType:
-    skill_id: strawberry.ID
-    skill_name: Optional[str]
 
 
 @strawberry.type
@@ -70,8 +65,7 @@ class Query:
         async with get_session() as session:
             query = select(ProjectModel).options(selectinload(ProjectModel.company).joinedload(CompanyModel.users),
                                                  selectinload(ProjectModel.skills),
-                                                 ).where(
-                ProjectModel.project_id == project_id)
+                                                 ).where(ProjectModel.project_id == project_id)
             result = await session.execute(query)
             return result.scalar_one() if result else None
 
@@ -182,6 +176,7 @@ class Mutation:
                 if deleted_job_seeker.rowcount == 0:
                     return ProjectResponse(success=False, message=f"Project with ID {project_id} not found.")
 
+                await session.execute(delete(ProjectSkills).where(ProjectSkills.project_id == project_id))
                 await session.commit()
 
                 return ProjectResponse(success=True, message="Project deleted successfully")

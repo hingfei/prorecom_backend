@@ -1,11 +1,13 @@
 import strawberry
 from sqlalchemy import select, delete, update
 from typing import Optional, List
-from conn import get_session, JobSeeker as JobSeekerModel, User as UserModel, Company as CompanyModel
+from conn import get_session, JobSeeker as JobSeekerModel, User as UserModel, Skill as SkillModel, JobSeekerSkills
 from sqlalchemy.orm import selectinload
 from strawberry.types import Info
 from strawberry.file_uploads import Upload
 import bcrypt
+
+from schemas.skill import SkillType
 from schemas.user import UserType
 
 
@@ -44,6 +46,7 @@ class UpdateJobSeekerInput:
     seeker_highest_educ: Optional[str] = None
     seeker_resume: Optional[Upload] = None
     seeker_about: Optional[str] = None
+    skills: Optional[List[int]] = None
 
 
 @strawberry.type
@@ -61,6 +64,7 @@ class JobSeekerType:
     seeker_highest_educ: Optional[str]
     seeker_resume: Optional[Upload]
     seeker_about: Optional[str] = None
+    skills: List[SkillType]
 
 
 @strawberry.type
@@ -80,7 +84,8 @@ class Query:
     @strawberry.field
     async def job_seeker_detail(self, info: Info, seeker_id: int) -> Optional[JobSeekerType]:
         async with get_session() as session:
-            sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users)).where(
+            sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users),
+                                                 selectinload(JobSeekerModel.skills)).where(
                 JobSeekerModel.seeker_id == seeker_id)
             result = await session.execute(sql)
             job_seeker = result.scalars().first()
@@ -89,7 +94,8 @@ class Query:
     @strawberry.field
     async def job_seeker_listing(self, info: Info) -> List[JobSeekerType]:
         async with get_session() as session:
-            sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users))
+            sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users),
+                                                 selectinload(JobSeekerModel.skills))
             job_seekers = await session.execute(sql)
             return job_seekers.scalars().unique().all()
 
@@ -181,6 +187,20 @@ class Mutation:
                 job_seeker.seeker_resume = input.seeker_resume
             if input.seeker_about is not None:
                 job_seeker.seeker_about = input.seeker_about
+            if input.skills is not None:
+                # Remove all existing skills from job seeker
+                await session.execute(delete(JobSeekerSkills).where(JobSeekerSkills.seeker_id == job_seeker.seeker_id))
+
+                # Add skills to jobseeker
+                for skill_id in input.skills:
+                    skill = await session.execute(select(SkillModel).where(SkillModel.skill_id == skill_id))
+                    skill = skill.scalar()
+                    # if skill is None:
+                    #     skill = SkillModel(skill_name=skill_name)
+                    #     session.add(skill)
+                    #     await session.flush()
+                    job_seeker_skill = JobSeekerSkills(seeker_id=job_seeker.seeker_id, skill_id=skill.skill_id)
+                    session.add(job_seeker_skill)
 
             try:
                 await session.commit()

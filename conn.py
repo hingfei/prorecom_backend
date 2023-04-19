@@ -30,6 +30,20 @@ class User(Base):
     __mapper_args__ = {"polymorphic_on": user_type, 'polymorphic_identity': 'users'}
 
 
+class JobSeekerSkills(Base):
+    __tablename__ = 'job_seeker_skills'
+
+    seeker_id = Column(Integer, ForeignKey('job_seekers.seeker_id'), primary_key=True)
+    skill_id = Column(Integer, ForeignKey('skills.skill_id'), primary_key=True)
+
+
+job_seeker_skills = Table('job_seeker_skills', Base.metadata,
+                          Column('seeker_id', Integer, ForeignKey('job_seekers.seeker_id'), primary_key=True),
+                          Column('skill_id', String, ForeignKey('skills.skill_id'), primary_key=True),
+                          extend_existing=True
+                          )
+
+
 class JobSeeker(User):
     __tablename__ = "job_seekers"
     seeker_id: int = Column(Integer, ForeignKey("users.user_id"), primary_key=True)
@@ -45,15 +59,8 @@ class JobSeeker(User):
     seeker_resume: Optional[bytes] = Column(LargeBinary, nullable=True)
     seeker_about: Optional[str] = Column(String, nullable=True)
     users = relationship("User", backref="job_seekers")
-    skills = relationship("Skill", secondary='job_seeker_skills', backref='job_seekers')
+    skills = relationship("Skill", secondary=job_seeker_skills, backref='job_seekers')
     __mapper_args__ = {"polymorphic_identity": "job_seekers"}
-
-
-job_seeker_skills = Table('job_seeker_skills', Base.metadata,
-                          Column('seeker_id', Integer, ForeignKey('job_seekers.seeker_id'), primary_key=True),
-                          Column('skill_id', String, ForeignKey('skills.skill_id'), primary_key=True),
-                          extend_existing=True
-                          )
 
 
 class Company(User):
@@ -198,5 +205,5 @@ if __name__ == "__main__":
     # print("Dropping and creating tables")
     # asyncio.run(_async_main())
     # asyncio.run(import_csv())
-    asyncio.run(add_column())
+    # asyncio.run(add_column())
     print("Done.")
