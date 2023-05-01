@@ -1,7 +1,8 @@
 import strawberry
 from sqlalchemy import select, delete, update
 from typing import Optional, List
-from conn import get_session, JobSeeker as JobSeekerModel, User as UserModel, Skill as SkillModel, JobSeekerSkills
+from conn import get_session, JobSeeker as JobSeekerModel, User as UserModel, Skill as SkillModel, JobSeekerSkills, \
+    Education as EducationModel
 from sqlalchemy.orm import selectinload
 from strawberry.types import Info
 from strawberry.file_uploads import Upload
@@ -9,6 +10,7 @@ import bcrypt
 
 from schemas.skill import SkillType
 from schemas.user import UserType
+from schemas.education import EducationType, EducationInput
 
 
 @strawberry.input
@@ -24,7 +26,6 @@ class CreateJobSeekerInput:
     seeker_street: Optional[str]
     seeker_city: Optional[str]
     seeker_state: Optional[str]
-    seeker_highest_educ: Optional[str] = None
     seeker_resume: Optional[Upload] = None
     seeker_about: Optional[str] = None
 
@@ -43,10 +44,10 @@ class UpdateJobSeekerInput:
     seeker_street: Optional[str] = None
     seeker_city: Optional[str] = None
     seeker_state: Optional[str] = None
-    seeker_highest_educ: Optional[str] = None
     seeker_resume: Optional[Upload] = None
     seeker_about: Optional[str] = None
     skills: Optional[List[int]] = None
+    educations: Optional[List[EducationInput]] = None
 
 
 @strawberry.type
@@ -61,10 +62,10 @@ class JobSeekerType:
     seeker_street: Optional[str]
     seeker_city: Optional[str]
     seeker_state: Optional[str]
-    seeker_highest_educ: Optional[str]
     seeker_resume: Optional[Upload]
     seeker_about: Optional[str] = None
     skills: List[SkillType]
+    educations: List[EducationType]
 
 
 @strawberry.type
@@ -85,7 +86,8 @@ class Query:
     async def job_seeker_detail(self, info: Info, seeker_id: int) -> Optional[JobSeekerType]:
         async with get_session() as session:
             sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users),
-                                                 selectinload(JobSeekerModel.skills)).where(
+                                                 selectinload(JobSeekerModel.skills),
+                                                 selectinload(JobSeekerModel.educations)).where(
                 JobSeekerModel.seeker_id == seeker_id)
             result = await session.execute(sql)
             job_seeker = result.scalars().first()
@@ -95,7 +97,8 @@ class Query:
     async def job_seeker_listing(self, info: Info) -> List[JobSeekerType]:
         async with get_session() as session:
             sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users),
-                                                 selectinload(JobSeekerModel.skills))
+                                                 selectinload(JobSeekerModel.skills),
+                                                 selectinload(JobSeekerModel.educations))
             job_seekers = await session.execute(sql)
             return job_seekers.scalars().unique().all()
 
@@ -135,7 +138,6 @@ class Mutation:
                     seeker_street=input.seeker_street,
                     seeker_city=input.seeker_city,
                     seeker_state=input.seeker_state,
-                    seeker_highest_educ=input.seeker_highest_educ if input.seeker_highest_educ else None,
                     seeker_resume=input.seeker_resume if input.seeker_resume else None,
                     seeker_about=input.seeker_about if input.seeker_about else None,
                 )
@@ -181,8 +183,6 @@ class Mutation:
                 job_seeker.seeker_city = input.seeker_city
             if input.seeker_state is not None:
                 job_seeker.seeker_state = input.seeker_state
-            if input.seeker_highest_educ is not None:
-                job_seeker.seeker_highest_educ = input.seeker_highest_educ
             if input.seeker_resume is not None:
                 job_seeker.seeker_resume = input.seeker_resume
             if input.seeker_about is not None:
@@ -195,12 +195,44 @@ class Mutation:
                 for skill_id in input.skills:
                     skill = await session.execute(select(SkillModel).where(SkillModel.skill_id == skill_id))
                     skill = skill.scalar()
-                    # if skill is None:
-                    #     skill = SkillModel(skill_name=skill_name)
-                    #     session.add(skill)
-                    #     await session.flush()
                     job_seeker_skill = JobSeekerSkills(seeker_id=job_seeker.seeker_id, skill_id=skill.skill_id)
                     session.add(job_seeker_skill)
+
+            # Update educations of job seeker
+            if input.educations is not None:
+                print('educations', input.educations)
+                if len(input.educations) == 0:
+                    # job_seeker.educations = []
+                    await session.execute(
+                        delete(EducationModel).where(EducationModel.job_seeker_id == job_seeker.seeker_id))
+                else:
+                    for education_input in input.educations:
+                        print("input", education_input)
+                        education = await session.get(EducationModel, education_input.education_id)
+                        if education is not None:
+                            if education_input.education_level is not None:
+                                education.education_level = education_input.education_level
+                            if education_input.education_institution is not None:
+                                education.education_institution = education_input.education_institution
+                            if education_input.field_of_study is not None:
+                                education.field_of_study = education_input.field_of_study
+                            if education_input.graduation_year is not None:
+                                education.graduation_year = education_input.graduation_year
+                            if education_input.description is not None:
+                                education.description = education_input.description
+                            if education_input.grade is not None:
+                                education.grade = education_input.grade
+                        else:
+                            job_seeker_education = EducationModel(
+                                job_seeker_id=job_seeker.seeker_id,
+                                education_level=education_input.education_level,
+                                education_institution=education_input.education_institution,
+                                field_of_study=education_input.field_of_study,
+                                graduation_year=education_input.graduation_year,
+                                description=education_input.description,
+                                grade=education_input.grade
+                            )
+                            session.add(job_seeker_education)
 
             try:
                 await session.commit()
