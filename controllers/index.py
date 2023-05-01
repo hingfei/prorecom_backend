@@ -6,6 +6,7 @@ from schemas.project import Query as ProjectQuery, Mutation as ProjectMutation
 from schemas.job_seeker import Query as SeekerQuery, Mutation as SeekerMutation
 from schemas.company import Query as CompanyQuery, Mutation as CompanyMutation
 from schemas.skill import Query as SkillQuery
+from schemas.education import Query as EducationQuery, Mutation as EducationMutation
 from functools import cached_property
 from strawberry.types import Info as _Info
 from strawberry.types.info import RootValueType
@@ -67,12 +68,12 @@ async def get_context() -> Context:
 
 # Define the combined schema
 @strawberry.type
-class Query(UserQuery, ProjectQuery, SeekerQuery, CompanyQuery, SkillQuery):
+class Query(UserQuery, ProjectQuery, SeekerQuery, CompanyQuery, SkillQuery, EducationQuery):
     pass
 
 
 @strawberry.type
-class Mutation(UserMutation, ProjectMutation, SeekerMutation, CompanyMutation):
+class Mutation(UserMutation, ProjectMutation, SeekerMutation, CompanyMutation, EducationMutation):
     pass
 
 

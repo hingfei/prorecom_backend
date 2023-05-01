@@ -60,6 +60,7 @@ class JobSeeker(User):
     seeker_about: Optional[str] = Column(String, nullable=True)
     users = relationship("User", backref="job_seekers")
     skills = relationship("Skill", secondary=job_seeker_skills, backref='job_seekers')
+    educations = relationship("Education", back_populates="job_seeker")
     __mapper_args__ = {"polymorphic_identity": "job_seekers"}
 
 
@@ -75,6 +76,19 @@ class Company(User):
     company_state: str = Column(String, nullable=True)
     users = relationship("User", backref="companies")
     __mapper_args__ = {"polymorphic_identity": "companies"}
+
+
+class Education(Base):
+    __tablename__ = "educations"
+    education_id: int = Column(Integer, primary_key=True, autoincrement=True)
+    job_seeker_id: int = Column(Integer, ForeignKey("job_seekers.seeker_id"))
+    education_level: int = Column(Integer, nullable=True)
+    education_institution: str = Column(String, nullable=True)
+    field_of_study: int = Column(Integer, nullable=True)
+    graduation_year: int = Column(Integer, nullable=True)
+    description: str = Column(String, nullable=True)
+    grade: str = Column(String, nullable=True)
+    job_seeker = relationship("JobSeeker", back_populates="educations")
 
 
 class ProjectSkills(Base):
@@ -197,7 +211,7 @@ async def import_csv():
 async def add_column():
     async with get_session() as session:
         # Migrate the database as needed
-        await session.execute(text('alter table job_seekers add column seeker_about String'))
+        await session.execute(text('alter table educations add column grade String'))
         await session.commit()
 
 
@@ -205,5 +219,5 @@ if __name__ == "__main__":
     # print("Dropping and creating tables")
     # asyncio.run(_async_main())
     # asyncio.run(import_csv())
-    # asyncio.run(add_column())
+    asyncio.run(add_column())
     print("Done.")
