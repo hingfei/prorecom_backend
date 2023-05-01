@@ -11,7 +11,7 @@ import bcrypt
 
 JWT_SECRET = config('secret')
 JWT_ALGORITHM = config('algorithm')
-EXPIRATION_TIME = timedelta(minutes=30)
+EXPIRATION_TIME = timedelta(minutes=60)
 
 
 def decode_token(token: str):
