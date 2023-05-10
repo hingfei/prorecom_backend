@@ -10,7 +10,8 @@ from sqlalchemy import Column, Integer, String, select
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 metadata = MetaData()
-engine = create_async_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, echo=True)
+# echo = True to traceback the data queries
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 async_sessionmaker = sessionmaker(
     bind=engine,
     class_=AsyncSession,

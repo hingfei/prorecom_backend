@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from conn import get_session, Project as ProjectModel, Skill as SkillModel, ProjectSkills, Company as CompanyModel
 from strawberry.types import Info
 
+from recommendations.recommendation_engine import get_projects_recommendations
 from schemas.company import CompanyType
 from schemas.skill import SkillType
 
@@ -70,12 +71,32 @@ class Query:
             return result.scalar_one() if result else None
 
     @strawberry.field
-    async def project_listing(self) -> List[ProjectType]:
+    async def project_listing(self, recommendation: Optional[bool] = False) -> List[ProjectType]:
         async with get_session() as session:
-            query = select(ProjectModel).options(selectinload(ProjectModel.company).joinedload(CompanyModel.users),
-                                                 selectinload(ProjectModel.skills)).limit(50)
-            results = await session.execute(query)
-            return results.scalars().unique()
+            if recommendation:
+                ranked_projects = await get_projects_recommendations(417)
+                # print('ranked projects', ranked_projects)
+                project_ids = [i for i, _ in ranked_projects]
+                # print("project id", project_ids)
+                query = select(ProjectModel).options(
+                    selectinload(ProjectModel.company).joinedload(CompanyModel.users),
+                    selectinload(ProjectModel.skills)
+                ).where(ProjectModel.project_id.in_(project_ids))
+                result = await session.execute(query)
+                projects = result.scalars().all()
+
+                # Create a dictionary to map project id to the project object
+                project_dict = {project.project_id: project for project in projects}
+
+                # Reorder the projects based on the project_ids sequence
+                ordered_projects = [project_dict[project_id] for project_id in project_ids]
+
+                return ordered_projects
+            else:
+                query = select(ProjectModel).options(selectinload(ProjectModel.company).joinedload(CompanyModel.users),
+                                                     selectinload(ProjectModel.skills)).limit(50)
+                results = await session.execute(query)
+                return results.scalars().unique()
 
 
 @strawberry.type
