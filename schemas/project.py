@@ -1,5 +1,5 @@
 import strawberry
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from typing import Optional, List
 
 from sqlalchemy.orm import selectinload
@@ -97,6 +97,23 @@ class Query:
                                                      selectinload(ProjectModel.skills)).limit(50)
                 results = await session.execute(query)
                 return results.scalars().unique()
+
+    @strawberry.field
+    async def search_projects(self, search_keyword: str) -> List[ProjectType]:
+        async with get_session() as session:
+            query = select(ProjectModel).options(
+                selectinload(ProjectModel.company).joinedload(CompanyModel.users),
+                selectinload(ProjectModel.skills)
+            ).where(
+                or_(
+                    ProjectModel.project_name.ilike(f"%{search_keyword}%"),
+                    ProjectModel.project_desc.ilike(f"%{search_keyword}%"),
+                    ProjectModel.project_req.ilike(f"%{search_keyword}%")
+                )
+            )
+            result = await session.execute(query)
+            projects = result.scalars().all()
+            return projects
 
 
 @strawberry.type
