@@ -9,6 +9,21 @@ from sqlalchemy.orm import selectinload
 from conn import get_session, JobSeeker as JobSeekerModel, Project as ProjectModel
 
 
+# Define global variables to store the loaded model and clusters
+ft_model = None
+project_clusters = None
+projects_skillset_vectors = None
+centroids = None
+
+
+def load_fasttext_model():
+    global ft_model
+    fasttext.util.download_model('en', if_exists='ignore')
+    if ft_model is None:
+        print('loading fast text')
+        ft_model = fasttext.load_model('cc.en.300.bin')
+
+
 async def get_user_skillsets(seeker_id):
     async with get_session() as session:
         sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users),
@@ -63,26 +78,47 @@ def preprocess_skillsets(skillsets):
     return preprocessed_skillsets
 
 
-def get_ranked_items(user_vector, projects_skillset_vectors):
-    # Cluster projects based on skillset vectors
-    n_clusters = 5
-    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit([v[0] for v in projects_skillset_vectors])
-    centroids = kmeans.cluster_centers_
-    project_clusters = [[] for _ in range(n_clusters)]
-    for i, label in enumerate(kmeans.labels_):
-        project_clusters[label].append(i)
+async def cluster_projects(refresh=False):
+    global project_clusters
+    global projects_skillset_vectors
+    global centroids
+    if project_clusters is None or refresh:
+        print('clustering projects')
+        projects_skillsets, project_ids = await get_projects_skillsets()
+        projects_skillsets_processed = preprocess_skillsets(projects_skillsets)
 
-    print("Project clusters", project_clusters)
-    for cluster in project_clusters:
-        print(f'Length of cluster: {len(cluster)}')
+        skillset_size = ft_model.get_dimension()
+        projects_skillset_vectors = []
+        for i, skills in enumerate(projects_skillsets_processed):
+            if skills:
+                project_vector = np.mean([ft_model.get_word_vector(skill) for skill in skills], axis=0)
+            else:
+                project_vector = np.zeros(skillset_size)
+            projects_skillset_vectors.append((project_vector, project_ids[i]))
+
+        # Cluster projects based on skillset vectors
+        n_clusters = 8
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit([v[0] for v in projects_skillset_vectors])
+        centroids = kmeans.cluster_centers_
+        project_clusters = [[] for _ in range(n_clusters)]
+        for i, label in enumerate(kmeans.labels_):
+            project_clusters[label].append(i)
+
+        print("Project clusters", project_clusters)
+        for cluster in project_clusters:
+            print(f'Length of cluster: {len(cluster)}')
+
+
+async def get_ranked_items(user_vector):
+    # Cluster projects
+    await cluster_projects()
 
     # Determine the closest cluster to the user skillset vector
     cluster_similarities = [cosine_similarity(user_vector.reshape(1, -1), centroid.reshape(1, -1)).item() for centroid
                             in centroids]
     closest_cluster_idx = np.argmax(cluster_similarities)
 
-    print("Closest cluster: Cluster", closest_cluster_idx + 1)
-    print(project_clusters[closest_cluster_idx])
+    print('closest cluster', len(project_clusters[closest_cluster_idx]))
 
     # Compute cosine similarity between user vector and project vectors within closest cluster
     cluster_project_skillset_vectors = [projects_skillset_vectors[i] for i in project_clusters[closest_cluster_idx]]
@@ -106,28 +142,17 @@ def get_ranked_items(user_vector, projects_skillset_vectors):
 async def get_projects_recommendations(seeker_id):
     async with get_session() as session:
         # Load the pre-trained FastText model
-        fasttext.util.download_model('en', if_exists='ignore')
-        ft_model = fasttext.load_model('cc.en.300.bin')
+        load_fasttext_model()
 
         # Retrieve skillsets from databases
         user_skillsets = await get_user_skillsets(seeker_id)
-        projects_skillsets, project_ids = await get_projects_skillsets()
 
         # Preprocess skillsets
         user_skillsets_processed = preprocess_skillsets(user_skillsets)
-        projects_skillsets_processed = preprocess_skillsets(projects_skillsets)
 
         # Generate vectors
-        skillset_size = ft_model.get_dimension()
         user_skillset_vector = np.mean([ft_model.get_word_vector(skillset) for skillset in user_skillsets_processed],
                                        axis=0)
-        project_skillset_vectors = []
-        for i, skills in enumerate(projects_skillsets_processed):
-            if skills:
-                project_vector = np.mean([ft_model.get_word_vector(skill) for skill in skills], axis=0)
-            else:
-                project_vector = np.zeros(skillset_size)
-            project_skillset_vectors.append((project_vector, project_ids[i]))
 
         # print(project_skillset_vectors[0])
         # # Test Vectors
@@ -142,15 +167,15 @@ async def get_projects_recommendations(seeker_id):
         #
         # first_skill_vector = np.mean([ft_model.get_word_vector(skillset) for skillset in first_skill], axis=0)
         # second_skill_vector = np.mean([ft_model.get_word_vector(skillset) for skillset in second_skill], axis=0)
-        # # print(first_skill_vector.shape, first_skill_vector.ndim)
-        # # print(second_skill_vector.shape, second_skill_vector.ndim)
-        # # print(first_skill_vector)
-        # # print(first_skill_vector.reshape(1,-1))
-        # # print(first_skill_vector.reshape(1,-1).shape, first_skill_vector.reshape(1,-1).ndim)
+        # print(first_skill_vector.shape, first_skill_vector.ndim)
+        # print(second_skill_vector.shape, second_skill_vector.ndim)
+        # print(first_skill_vector)
+        # print(first_skill_vector.reshape(1,-1))
+        # print(first_skill_vector.reshape(1,-1).shape, first_skill_vector.reshape(1,-1).ndim)
         # similarity = cosine_similarity(first_skill_vector.reshape(1,-1), second_skill_vector.reshape(1,-1))
         # print('similarity', similarity)
 
-        # # Get ranked items
-        ranked_projects = get_ranked_items(user_skillset_vector, project_skillset_vectors)
+        # Get ranked items
+        ranked_projects = await get_ranked_items(user_skillset_vector)
 
         return ranked_projects
