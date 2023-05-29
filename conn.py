@@ -1,12 +1,17 @@
-import csv
 import asyncio
-from sqlalchemy import Table, MetaData, ForeignKey, LargeBinary, create_engine, text
+import src.settings as settings
+from sqlalchemy import Table, MetaData, ForeignKey, LargeBinary, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker, relationship, selectinload
+from sqlalchemy.orm import sessionmaker, relationship
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, List, Optional
 from sqlalchemy.orm import declarative_base, Mapped
 from sqlalchemy import Column, Integer, String, select
+import json
+import numpy as np
+import csv
+import re
+
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 metadata = MetaData()
@@ -59,6 +64,7 @@ class JobSeeker(User):
     seeker_highest_educ: Optional[str] = Column(String, nullable=True)
     seeker_resume: Optional[bytes] = Column(LargeBinary, nullable=True)
     seeker_about: Optional[str] = Column(String, nullable=True)
+    seeker_skillset_vector: Optional[List[float]] = Column(String, nullable=True)
     users = relationship("User", backref="job_seekers")
     skills = relationship("Skill", secondary=job_seeker_skills, backref='job_seekers')
     educations = relationship("Education", back_populates="job_seeker")
@@ -114,10 +120,12 @@ class Project(Base):
     company: Mapped[Company] = relationship("Company", backref="projects")
     project_types: str = Column(String, nullable=True)
     post_dates: str = Column(String, nullable=True)
-    project_salary: str = Column(String, nullable=True)
+    project_min_salary: Optional[int] = Column(Integer, nullable=True)
+    project_max_salary: Optional[int] = Column(Integer, nullable=True)
     project_desc: str = Column(String, nullable=True)
     project_req: str = Column(String, nullable=True)
     project_exp_lvl: str = Column(String, nullable=True)
+    project_skillset_vector: Optional[List[float]] = Column(String, nullable=True)
     skills = relationship(
         "Skill",
         secondary=project_skills,
@@ -152,7 +160,55 @@ async def _async_main():
     await engine.dispose()
 
 
+
+
+
+# Load Dataset
+def preprocess_skillsets(skillsets):
+    user_skillset = False
+    preprocessed_skillsets = []
+
+    for skills in skillsets:
+        if isinstance(skills, str):  # Single skill within a skillset
+            user_skillset = True
+            # Convert to lowercase and remove symbols
+            preprocessed_skills = re.sub(r'[^a-zA-Z\s+]', '', skills.lower().strip())
+            # Split the skillset into separate skills
+            preprocessed_skills = preprocessed_skills.split()
+        else:  # List of skills within a skillset
+            preprocessed_skills = []
+            for skill in skills:
+                # Convert to lowercase and remove symbols
+                preprocessed_skill = re.sub(r'[^a-zA-Z\s+]', '', skill.lower().strip())
+                preprocessed_skills += preprocessed_skill.split()
+        preprocessed_skillsets.append(preprocessed_skills)
+
+    if user_skillset:
+        # Flatten the list of skillsets
+        preprocessed_skillsets = [skill for skills in preprocessed_skillsets for skill in skills]
+
+    return preprocessed_skillsets
+
+
+def preprocess_salary(salary):
+    if salary.lower() == 'undisclosed':
+        return None, None
+
+    salary_values = salary.split('-')
+    min_salary = None
+    max_salary = None
+
+    if len(salary_values) == 1:
+        min_salary = int(salary_values[0].strip().replace('RM', '').strip())
+    elif len(salary_values) == 2:
+        min_salary = int(salary_values[0].strip().replace('RM', '').strip())
+        max_salary = int(salary_values[1].strip().replace('RM', '').strip())
+
+    return min_salary, max_salary
+
+
 async def import_csv():
+    # settings.load_fasttext_model()
     with open('projects_list.csv', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         async with get_session() as session:
@@ -180,21 +236,21 @@ async def import_csv():
 
                 # Split the project skills into a list of skill names
                 skills = row['skills'].split('\n')
-                print("exists")
+                min_salary, max_salary = preprocess_salary(row['salary'])
                 # Create a new project for the company
                 project = Project(
                     project_name=row['job_title'],
                     company_id=company.company_id,
                     project_types=row['job_types'],
                     post_dates=row['post_dates'],
-                    project_salary=row['salary'],
+                    project_min_salary=min_salary,
+                    project_max_salary=max_salary,
                     project_desc=row['job_desc'],
                     project_req=row['job_req'],
                     project_exp_lvl=row['exp_lvl']
                 )
 
                 # Add each skill to the project
-                print('here?')
                 for skill_name in skills:
                     if skill_name != '':
                         skill = await session.execute(select(Skill).where(Skill.skill_name == skill_name))
@@ -203,7 +259,14 @@ async def import_csv():
                             skill = Skill(skill_name=skill_name)
                             session.add(skill)
                         project.skills.append(skill)
-                print('here?')
+
+                skills_processed = preprocess_skillsets(skills)
+                if len(skills_processed) > 0:
+                    skillset_size = settings.ft_model.get_dimension()
+                    project_vector = np.mean([settings.ft_model.get_word_vector(skill) for skill in skills_processed], axis=0)
+                else:
+                    project_vector = np.zeros(skillset_size)
+                project.project_skillset_vector = json.dumps(project_vector.tolist())
                 session.add(project)
 
             await session.commit()
@@ -217,8 +280,8 @@ async def add_column():
 
 
 if __name__ == "__main__":
-    # print("Dropping and creating tables")
+    print("Dropping and creating tables")
     # asyncio.run(_async_main())
     # asyncio.run(import_csv())
-    asyncio.run(add_column())
+    # asyncio.run(add_column())
     print("Done.")
