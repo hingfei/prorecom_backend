@@ -208,7 +208,7 @@ def preprocess_salary(salary):
 
 
 async def import_csv():
-    # settings.load_fasttext_model()
+    settings.load_fasttext_model()
     with open('projects_list.csv', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         async with get_session() as session:
@@ -224,7 +224,8 @@ async def import_csv():
                         user_email=row['company_name'].lower().replace(' ', ''),
                         password=row['company_name'].lower().replace(' ', ''),
                         company_name=row['company_name'],
-                        company_street=row['company_locations']
+                        company_street=row['company_locations'],
+                        company_state=row['company_states']
                     )
                     session.add(company)
                     await session.flush()  # Flush the session to get the new company ID
@@ -281,7 +282,7 @@ async def add_column():
 
 if __name__ == "__main__":
     print("Dropping and creating tables")
-    # asyncio.run(_async_main())
-    # asyncio.run(import_csv())
+    asyncio.run(_async_main())
+    asyncio.run(import_csv())
     # asyncio.run(add_column())
     print("Done.")

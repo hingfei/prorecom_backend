@@ -15,7 +15,9 @@ async def get_user_skillsets(seeker_id):
             JobSeekerModel.seeker_id == seeker_id)
         job_seeker_result = await session.execute(sql)
         job_seeker = job_seeker_result.scalars().one()
-
+        if job_seeker.seeker_skillset_vector is None:
+            skillset_size = settings.ft_model.get_dimension()
+            return np.zeros(skillset_size)
         user_skillset_vector = np.array(json.loads(job_seeker.seeker_skillset_vector))
         return user_skillset_vector
 
