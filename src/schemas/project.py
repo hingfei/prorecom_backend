@@ -21,6 +21,7 @@ class CreateProjectInput:
     project_max_salary: Optional[int]
     project_desc: Optional[str]
     project_req: Optional[str]
+    project_status: Optional[str]
     project_exp_lvl: Optional[str]
     skills: List[int]
 
@@ -34,6 +35,7 @@ class UpdateProjectInput:
     project_max_salary: Optional[int] = None
     project_desc: Optional[str] = None
     project_req: Optional[str] = None
+    project_status: Optional[str] = None
     project_exp_lvl: Optional[str] = None
     skills: Optional[List[int]] = None
 
@@ -50,6 +52,7 @@ class ProjectType:
     project_max_salary: Optional[int]
     project_desc: Optional[str]
     project_req: Optional[str]
+    project_status: Optional[str]
     project_exp_lvl: Optional[str]
     skills: List[SkillType]
 
@@ -77,6 +80,9 @@ class Query:
         async with get_session() as session:
             if recommendation:
                 user_id = await info.context.get_current_user
+                if user_id is None:
+                    raise ValueError("User not authenticated")
+
                 ranked_projects = await get_projects_recommendations(user_id)
                 # print('ranked projects', ranked_projects)
                 project_ids = [i for i, _ in ranked_projects]
@@ -118,6 +124,18 @@ class Query:
             projects = result.scalars().all()
             return projects
 
+    @strawberry.field
+    async def company_project_listing(self, company_id: int) -> List[Optional[ProjectType]]:
+        async with get_session() as session:
+            query = select(ProjectModel).options(
+                selectinload(ProjectModel.company).joinedload(CompanyModel.users),
+                selectinload(ProjectModel.skills)
+            ).where(ProjectModel.company_id == company_id)
+
+            result = await session.execute(query)
+            projects = result.scalars().all()
+
+            return projects if projects else []
 
 @strawberry.type
 class Mutation:

@@ -12,7 +12,7 @@ from strawberry.types import Info as _Info
 from strawberry.types.info import RootValueType
 from datetime import datetime
 from decouple import config
-from jwt import decode, InvalidTokenError
+from jwt import decode, InvalidTokenError, ExpiredSignatureError
 
 JWT_SECRET = config('secret')
 JWT_ALGORITHM = config('algorithm')
@@ -51,12 +51,15 @@ class Context(BaseContext):
             payload = decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
             user_id = payload["user_id"]
 
-            if is_token_expired(token):
-                raise SessionExpired("Session has expired")
+            if "exp" in payload and payload["exp"] < datetime.utcnow().timestamp():
+                raise Exception("Session has expired")
 
             return user_id
-        except InvalidTokenError:
-            raise Exception("Invalid token")
+        except (InvalidTokenError, ExpiredSignatureError):
+            if InvalidTokenError:
+                raise Exception("Invalid token")
+            elif ExpiredSignatureError:
+                raise Exception("Session has expired")
 
 
 Info = _Info[Context, RootValueType]

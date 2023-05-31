@@ -1,5 +1,4 @@
 import json
-
 import strawberry
 from sqlalchemy import select, delete
 from typing import Optional, List
@@ -12,7 +11,7 @@ import bcrypt
 from src.schemas.skill import SkillType
 from src.schemas.user import UserType
 from src.schemas.education import EducationType, EducationInput
-from src.recommendations.recommendation_engine import preprocess_skillsets, cluster_projects
+from src.recommendations.recommendation_engine import preprocess_skillsets
 import src.settings as settings
 import numpy as np
 
@@ -79,11 +78,6 @@ class JobSeekerResponse:
     message: Optional[str]
 
 
-def hash_password(password: str) -> str:
-    hashed_bytes = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    return hashed_bytes.decode('utf-8')
-
-
 @strawberry.type
 class Query:
     @strawberry.field
@@ -128,7 +122,7 @@ class Mutation:
                     return JobSeekerResponse(success=False, job_seeker=None,
                                              message=f"Email already exist.")
 
-                hashed_password = hash_password(input.password)
+                hashed_password = settings.hash_password(input.password)
 
                 job_seeker = JobSeekerModel(
                     user_name=input.user_name,
@@ -150,7 +144,7 @@ class Mutation:
                 await session.commit()
 
                 return JobSeekerResponse(
-                    success=True, job_seeker=job_seeker, message="Account created"
+                    success=True, job_seeker=job_seeker, message="Account is created"
                 )
 
             except Exception as e:
@@ -208,7 +202,8 @@ class Mutation:
                 skills_processed = preprocess_skillsets(skill_list)
                 skillset_size = settings.ft_model.get_dimension()
                 if len(skills_processed) > 0:
-                    skillset_vector = np.mean([settings.ft_model.get_word_vector(skill) for skill in skills_processed], axis=0)
+                    skillset_vector = np.mean([settings.ft_model.get_word_vector(skill) for skill in skills_processed],
+                                              axis=0)
                 else:
                     skillset_vector = np.zeros(skillset_size)
                 job_seeker.seeker_skillset_vector = json.dumps(skillset_vector.tolist())
@@ -296,7 +291,7 @@ class Mutation:
                                              message=f"Invalid current password.")
 
                 # Update the password
-                hashed_password = hash_password(new_password)
+                hashed_password = settings.hash_password(new_password)
                 if user.password is not None:
                     user.password = hashed_password
 
