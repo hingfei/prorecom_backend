@@ -196,6 +196,7 @@ class Mutation:
                     return AuthResponse(success=False, token=None, user=None, message='Account not found')
                 if not bcrypt.checkpw(password.encode('utf-8'), db_user.password.encode('utf-8')):
                     return AuthResponse(success=False, token=None, user=None, message='Password is incorrect')
+                
                 user = UserType(
                     user_id=db_user.user_id,
                     user_name=db_user.user_name,
@@ -204,7 +205,7 @@ class Mutation:
                     user_type=db_user.user_type
                 )
                 token = user.generate_token()
-                return AuthResponse(success=True, token=token, user=User.marshal(db_user), message='Login successfully')
+                return AuthResponse(success=True, token=token, user=user, message='Login successfully')
 
             except Exception as e:
                 return AuthResponse(success=False, token=None, user=None, message=str(e))
