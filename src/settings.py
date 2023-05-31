@@ -1,5 +1,7 @@
 import fasttext
 import fasttext.util
+import bcrypt
+
 
 # Define global variables to store the loaded model and clusters
 ft_model = None
@@ -22,3 +24,8 @@ def load_fasttext_model():
     if ft_model is None:
         print('loading fast text')
         ft_model = fasttext.load_model('cc.en.300.bin')
+
+
+def hash_password(password: str) -> str:
+    hashed_bytes = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return hashed_bytes.decode('utf-8')
