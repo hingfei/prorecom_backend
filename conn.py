@@ -125,6 +125,7 @@ class Project(Base):
     project_desc: str = Column(String, nullable=True)
     project_req: str = Column(String, nullable=True)
     project_exp_lvl: str = Column(String, nullable=True)
+    project_status: str = Column(String, nullable=True)
     project_skillset_vector: Optional[List[float]] = Column(String, nullable=True)
     skills = relationship(
         "Skill",
@@ -218,11 +219,13 @@ async def import_csv():
                 company = await session.execute(sql)
                 company = company.scalar()
                 if company is None:
+                    hashed_password=settings.hash_password(row['company_name'].lower().replace(' ', ''))
+                    print('hash password', hashed_password)
                     # If the company doesn't exist, create a new one
                     company = Company(
                         user_name=row['company_name'].lower().replace(' ', ''),  # Use company name as the username
                         user_email=row['company_name'].lower().replace(' ', ''),
-                        password=row['company_name'].lower().replace(' ', ''),
+                        password=hashed_password,
                         company_name=row['company_name'],
                         company_street=row['company_locations'],
                         company_state=row['company_states']
@@ -248,7 +251,8 @@ async def import_csv():
                     project_max_salary=max_salary,
                     project_desc=row['job_desc'],
                     project_req=row['job_req'],
-                    project_exp_lvl=row['exp_lvl']
+                    project_exp_lvl=row['exp_lvl'],
+                    project_status='active'
                 )
 
                 # Add each skill to the project
