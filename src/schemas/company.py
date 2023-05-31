@@ -3,8 +3,11 @@ from typing import Optional, List
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from strawberry.types import Info
-from conn import get_session, Company as CompanyModel, User as UserModel
+from conn import get_session, Company as CompanyModel, User as UserModel, Project as ProjectModel
 from src.schemas.user import UserType
+from src.schemas.skill import SkillType
+import src.settings as settings
+import bcrypt
 
 
 @strawberry.input
@@ -37,6 +40,22 @@ class UpdateCompanyInput:
 
 
 @strawberry.type
+class ProjectListingType:
+    project_id: strawberry.ID
+    project_name: str
+    company_id: strawberry.ID
+    project_types: Optional[str]
+    post_dates: Optional[str]
+    project_min_salary: Optional[int]
+    project_max_salary: Optional[int]
+    project_desc: Optional[str]
+    project_req: Optional[str]
+    project_exp_lvl: Optional[str]
+    project_status: str
+    skills: List[SkillType]
+
+
+@strawberry.type
 class CompanyType:
     company_id: strawberry.ID
     users: Optional[UserType]
@@ -47,6 +66,7 @@ class CompanyType:
     company_street: Optional[str]
     company_city: Optional[str]
     company_state: Optional[str]
+    projects: Optional[List[ProjectListingType]]
 
 
 @strawberry.type
@@ -61,8 +81,10 @@ class Query:
     @strawberry.field
     async def company_detail(self, info: Info, company_id: int) -> Optional[CompanyType]:
         async with get_session() as session:
-            sql = select(CompanyModel).options(selectinload(CompanyModel.users)).where(
-                CompanyModel.company_id == company_id)
+            sql = select(CompanyModel).options(
+                selectinload(CompanyModel.users),
+                selectinload(CompanyModel.projects)
+            ).where(CompanyModel.company_id == company_id)
             result = await session.execute(sql)
             company = result.scalars().first()
             return company if company else None
@@ -70,7 +92,8 @@ class Query:
     @strawberry.field
     async def company_listing(self, info: Info) -> List[CompanyType]:
         async with get_session() as session:
-            sql = select(CompanyModel).options(selectinload(CompanyModel.users))
+            sql = select(CompanyModel).options(selectinload(CompanyModel.users),
+                                               selectinload(CompanyModel.projects))
             company = await session.execute(sql)
             return company.scalars().unique().all()
 
@@ -96,10 +119,12 @@ class Mutation:
                     return CompanyResponse(success=False, company=None,
                                            message=f"Email already exist.")
 
+                hashed_password = settings.hash_password(input.password)
+
                 company = CompanyModel(
                     user_name=input.user_name,
                     user_email=input.user_email,
-                    password=input.password,
+                    password=hashed_password,
                     company_name=input.company_name,
                     company_founder=input.company_founder,
                     company_size=input.company_size,
@@ -134,8 +159,6 @@ class Mutation:
                 company.user_name = input.user_name
             if input.user_email is not None:
                 company.user_email = input.user_email
-            if input.password is not None:
-                company.password = input.password
             if input.company_name is not None:
                 company.company_name = input.company_name
             if input.company_founder is not None:
@@ -176,6 +199,35 @@ class Mutation:
                 await session.commit()
 
                 return CompanyResponse(success=True, message="Account deleted successfully")
+
+            except Exception as e:
+                # Return an error response with the error message
+                return CompanyResponse(success=False, message=str(e))
+
+    @strawberry.mutation
+    async def update_company_password(self, info: Info, current_password: str,
+                                      new_password: str, user_id: int) -> CompanyResponse:
+        async with get_session() as session:
+            try:
+                # Get the company by the current user ID
+                user = await session.get(UserModel, user_id)
+                if not user:
+                    return CompanyResponse(success=False,
+                                           message=f"Company not found.")
+
+                # Verify the current password
+                if not bcrypt.checkpw(current_password.encode('utf-8'), user.password.encode('utf-8')):
+                    return CompanyResponse(success=False,
+                                           message=f"Invalid current password.")
+
+                # Update the password
+                hashed_password = settings.hash_password(new_password)
+                if user.password is not None:
+                    user.password = hashed_password
+
+                await session.commit()
+
+                return CompanyResponse(success=True, message="Password updated successfully")
 
             except Exception as e:
                 # Return an error response with the error message
