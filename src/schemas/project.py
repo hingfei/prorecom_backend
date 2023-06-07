@@ -7,7 +7,8 @@ from typing import Optional, List
 from sqlalchemy.orm import selectinload
 from conn import get_session, Project as ProjectModel, Skill as SkillModel, ProjectSkills, Company as CompanyModel
 from strawberry.types import Info
-from src.recommendations.recommendation_engine import get_projects_recommendations, preprocess_skillsets
+from src.recommendations.project_recom_engine import get_projects_recommendations, preprocess_skillsets, \
+    cluster_projects
 from src.schemas.company import CompanyType
 from src.schemas.skill import SkillType
 
@@ -17,8 +18,8 @@ class CreateProjectInput:
     company_id: strawberry.ID
     project_types: Optional[str]
     post_dates: Optional[str]
-    project_min_salary: Optional[int]
-    project_max_salary: Optional[int]
+    project_min_salary: Optional[int] = None
+    project_max_salary: Optional[int] = None
     project_desc: Optional[str]
     project_req: Optional[str]
     project_status: Optional[str]
@@ -56,11 +57,20 @@ class ProjectType:
     project_exp_lvl: Optional[str]
     skills: List[SkillType]
 
+@strawberry.type
+class ProjectModifyType:
+    project_id: strawberry.ID
 
 @strawberry.type
 class ProjectResponse:
     success: bool
     project: Optional[ProjectType] = None
+    message: Optional[str] = None
+
+@strawberry.type
+class ProjectModifyResponse:
+    success: bool
+    project: Optional[ProjectModifyType] = None
     message: Optional[str] = None
 
 
@@ -130,8 +140,7 @@ class Query:
             query = select(ProjectModel).options(
                 selectinload(ProjectModel.company).joinedload(CompanyModel.users),
                 selectinload(ProjectModel.skills)
-            ).where(ProjectModel.company_id == company_id)
-
+            ).where(ProjectModel.company_id == company_id).order_by(ProjectModel.project_id.desc())
             result = await session.execute(query)
             projects = result.scalars().all()
 
@@ -140,15 +149,15 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    async def create_project(self, input: CreateProjectInput) -> ProjectResponse:
+    async def create_project(self, input: CreateProjectInput) -> ProjectModifyResponse:
 
         async with get_session() as session:
             try:
-                sql = select(ProjectModel).where(ProjectModel.company_id == input.company_id)
+                sql = select(CompanyModel).where(CompanyModel.company_id == input.company_id)
                 company = (await session.execute(sql)).first()
 
                 if company is None:
-                    return ProjectResponse(success=False,
+                    return ProjectModifyResponse(success=False,
                                            message=f"Company does not exist.")
 
                 # Create project and add it to the session
@@ -161,8 +170,10 @@ class Mutation:
                     project_max_salary=input.project_max_salary,
                     project_desc=input.project_desc,
                     project_req=input.project_req,
+                    project_status=input.project_status,
                     project_exp_lvl=input.project_exp_lvl,
                 )
+
                 # Add skills to project
                 if input.skills is not None:
                     skill_list = []
@@ -184,22 +195,23 @@ class Mutation:
 
                 session.add(new_project)
                 await session.commit()
+                await cluster_projects(refresh=True)
 
-                return ProjectResponse(
+                return ProjectModifyResponse(
                     success=True, project=new_project, message="Project is added."
                 )
 
             except Exception as e:
                 # Return an error response with the error message
-                return ProjectResponse(success=False, message=str(e))
+                return ProjectModifyResponse(success=False, message=str(e))
 
     @strawberry.mutation
-    async def update_project(self, input: UpdateProjectInput) -> ProjectResponse:
+    async def update_project(self, input: UpdateProjectInput) -> ProjectModifyResponse:
         async with get_session() as session:
             try:
                 project = await session.get(ProjectModel, input.project_id)
                 if project is None:
-                    return ProjectResponse(
+                    return ProjectModifyResponse(
                         success=False, message=f"Project with ID {input.project_id} not found."
                     )
 
@@ -217,6 +229,8 @@ class Mutation:
                     project.project_req = input.project_req
                 if input.project_exp_lvl is not None:
                     project.project_exp_lvl = input.project_exp_lvl
+                if input.project_status is not None:
+                    project.project_status = input.project_status
                 if input.skills is not None:
                     skill_list = []
                     # Remove all existing skills from project
@@ -240,26 +254,29 @@ class Mutation:
                     project.project_skillset_vector = json.dumps(project_vector.tolist())
 
                 await session.commit()
-                return ProjectResponse(success=True, project=project, message="Project has been updated.")
+                await cluster_projects(refresh=True)
+
+                return ProjectModifyResponse(success=True, project=project, message="Project has been updated.")
 
             except Exception as e:
-                return ProjectResponse(success=False, project=None, message=str(e))
+                return ProjectModifyResponse(success=False, project=None, message=str(e))
 
     @strawberry.mutation
-    async def delete_project(self, info: Info, project_id: int) -> ProjectResponse:
+    async def delete_project(self, info: Info, project_id: int) -> ProjectModifyResponse:
         async with get_session() as session:
             try:
                 # delete project from the database
                 delete_query = delete(ProjectModel).where(ProjectModel.project_id == project_id)
                 deleted_job_seeker = await session.execute(delete_query)
                 if deleted_job_seeker.rowcount == 0:
-                    return ProjectResponse(success=False, message=f"Project with ID {project_id} not found.")
+                    return ProjectModifyResponse(success=False, message=f"Project with ID {project_id} not found.")
 
                 await session.execute(delete(ProjectSkills).where(ProjectSkills.project_id == project_id))
                 await session.commit()
+                await cluster_projects(refresh=True)
 
-                return ProjectResponse(success=True, message="Project deleted successfully")
+                return ProjectModifyResponse(success=True, message="Project deleted successfully")
 
             except Exception as e:
                 # Return an error response with the error message
-                return ProjectResponse(success=False, message=str(e))
+                return ProjectModifyResponse(success=False, message=str(e))

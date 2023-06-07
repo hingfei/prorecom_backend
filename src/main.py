@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from src.controllers.index import graphql_app
-from src.recommendations.recommendation_engine import cluster_projects
+from src.recommendations.project_recom_engine import cluster_projects
+from src.recommendations.candidates_recom_engine import cluster_candidates
 from src.settings import init, load_fasttext_model
 import asyncio
 
@@ -14,6 +15,7 @@ async def startup():
     init()
     load_fasttext_model()
     await cluster_projects()
+    await cluster_candidates()
     print('finished cluster')
 
 

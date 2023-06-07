@@ -12,7 +12,6 @@ import numpy as np
 import csv
 import re
 
-
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 metadata = MetaData()
 # echo = True to traceback the data queries
@@ -161,9 +160,6 @@ async def _async_main():
     await engine.dispose()
 
 
-
-
-
 # Load Dataset
 def preprocess_skillsets(skillsets):
     user_skillset = False
@@ -219,7 +215,7 @@ async def import_csv():
                 company = await session.execute(sql)
                 company = company.scalar()
                 if company is None:
-                    hashed_password=settings.hash_password(row['company_name'].lower().replace(' ', ''))
+                    hashed_password = settings.hash_password(row['company_name'].lower().replace(' ', ''))
                     print('hash password', hashed_password)
                     # If the company doesn't exist, create a new one
                     company = Company(
@@ -268,7 +264,8 @@ async def import_csv():
                 skills_processed = preprocess_skillsets(skills)
                 if len(skills_processed) > 0:
                     skillset_size = settings.ft_model.get_dimension()
-                    project_vector = np.mean([settings.ft_model.get_word_vector(skill) for skill in skills_processed], axis=0)
+                    project_vector = np.mean([settings.ft_model.get_word_vector(skill) for skill in skills_processed],
+                                             axis=0)
                 else:
                     project_vector = np.zeros(skillset_size)
                 project.project_skillset_vector = json.dumps(project_vector.tolist())

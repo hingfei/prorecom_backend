@@ -6,15 +6,21 @@ import bcrypt
 # Define global variables to store the loaded model and clusters
 ft_model = None
 project_clusters = None
+candidate_clusters = None
 projects_skillset_vectors = None
-centroids = None
+candidates_skillset_vectors = None
+projects_centroids = None
+candidates_centroids = None
 
 
 def init():
     global ft_model
     global project_clusters
+    global candidate_clusters
     global projects_skillset_vectors
-    global centroids
+    global candidates_skillset_vectors
+    global projects_centroids
+    global candidates_centroids
 
 
 # Load pretrained model

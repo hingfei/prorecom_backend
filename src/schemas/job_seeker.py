@@ -11,7 +11,8 @@ import bcrypt
 from src.schemas.skill import SkillType
 from src.schemas.user import UserType
 from src.schemas.education import EducationType, EducationInput
-from src.recommendations.recommendation_engine import preprocess_skillsets
+from src.recommendations.project_recom_engine import preprocess_skillsets
+from src.recommendations.candidates_recom_engine import cluster_candidates, get_candidates_recommendations
 import src.settings as settings
 import numpy as np
 
@@ -99,6 +100,28 @@ class Query:
                                                  selectinload(JobSeekerModel.educations))
             job_seekers = await session.execute(sql)
             return job_seekers.scalars().unique().all()
+
+    @strawberry.field
+    async def recommended_job_seeker_listing(self, info: Info, project_id: int) -> List[JobSeekerType]:
+        async with get_session() as session:
+            ranked_candidates = await get_candidates_recommendations(project_id)
+            candidate_ids = [candidate_id for candidate_id, _ in ranked_candidates]
+
+            query = select(JobSeekerModel).options(
+                selectinload(JobSeekerModel.users),
+                selectinload(JobSeekerModel.skills),
+                selectinload(JobSeekerModel.educations)
+            ).where(JobSeekerModel.seeker_id.in_(candidate_ids))
+            result = await session.execute(query)
+            job_seekers = result.scalars().all()
+
+            # Create a dictionary to map job seeker id to the job seeker object
+            job_seeker_dict = {job_seeker.seeker_id: job_seeker for job_seeker in job_seekers}
+
+            # Reorder the job seekers based on the candidate_ids sequence
+            ordered_job_seekers = [job_seeker_dict[candidate_id] for candidate_id in candidate_ids]
+
+            return ordered_job_seekers
 
 
 @strawberry.type
@@ -246,6 +269,7 @@ class Mutation:
 
             try:
                 await session.commit()
+                await cluster_candidates(refresh=True)
                 return JobSeekerResponse(
                     success=True, job_seeker=job_seeker, message="Account has been updated."
                 )
@@ -267,6 +291,7 @@ class Mutation:
                     await session.execute(delete_query)
 
                 await session.commit()
+                await cluster_candidates(refresh=True)
 
                 return JobSeekerResponse(success=True, job_seeker=None, message="Account deleted successfully")
 
