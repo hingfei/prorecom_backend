@@ -1,6 +1,6 @@
 import json
 import strawberry
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from typing import Optional, List
 from conn import get_session, JobSeeker as JobSeekerModel, User as UserModel, Skill as SkillModel, JobSeekerSkills, \
     Education as EducationModel
@@ -50,6 +50,7 @@ class UpdateJobSeekerInput:
     seeker_state: Optional[str] = None
     seeker_resume: Optional[Upload] = None
     seeker_about: Optional[str] = None
+    seeker_is_open_for_work: Optional[bool] = None
     skills: Optional[List[int]] = None
     educations: Optional[List[EducationInput]] = None
 
@@ -67,7 +68,8 @@ class JobSeekerType:
     seeker_city: Optional[str]
     seeker_state: Optional[str]
     seeker_resume: Optional[Upload]
-    seeker_about: Optional[str] = None
+    seeker_about: Optional[str]
+    seeker_is_open_for_work: Optional[bool]
     skills: List[SkillType]
     educations: List[EducationType]
 
@@ -102,6 +104,32 @@ class Query:
             return job_seekers.scalars().unique().all()
 
     @strawberry.field
+    async def search_job_seekers(self, info: Info, search_keyword: str) -> List[JobSeekerType]:
+        async with get_session() as session:
+            # Search for job seekers based on the keyword and skills
+            subquery = select(JobSeekerModel.seeker_id).join(JobSeekerModel.skills).where(
+                SkillModel.skill_name.ilike(f"%{search_keyword}%")
+            )
+            query = select(JobSeekerModel).options(
+                selectinload(JobSeekerModel.users),
+                selectinload(JobSeekerModel.skills),
+                selectinload(JobSeekerModel.educations)
+            ).where(
+                or_(
+                    JobSeekerModel.seeker_name.ilike(f"%{search_keyword}%"),
+                    JobSeekerModel.seeker_about.ilike(f"%{search_keyword}%"),
+                    JobSeekerModel.seeker_street.ilike(f"%{search_keyword}%"),
+                    JobSeekerModel.seeker_city.ilike(f"%{search_keyword}%"),
+                    JobSeekerModel.seeker_state.ilike(f"%{search_keyword}%"),
+                    JobSeekerModel.seeker_id.in_(subquery)
+                )
+            )
+            result = await session.execute(query)
+            job_seekers = result.scalars().unique().all()
+
+            return job_seekers
+
+    @strawberry.field
     async def recommended_job_seeker_listing(self, info: Info, project_id: int) -> List[JobSeekerType]:
         async with get_session() as session:
             ranked_candidates = await get_candidates_recommendations(project_id)
@@ -111,7 +139,7 @@ class Query:
                 selectinload(JobSeekerModel.users),
                 selectinload(JobSeekerModel.skills),
                 selectinload(JobSeekerModel.educations)
-            ).where(JobSeekerModel.seeker_id.in_(candidate_ids))
+            ).where(JobSeekerModel.seeker_id.in_(candidate_ids)).limit(10)
             result = await session.execute(query)
             job_seekers = result.scalars().all()
 
@@ -208,6 +236,8 @@ class Mutation:
                 job_seeker.seeker_resume = input.seeker_resume
             if input.seeker_about is not None:
                 job_seeker.seeker_about = input.seeker_about
+            if input.seeker_is_open_for_work is not None:
+                job_seeker.seeker_is_open_for_work = input.seeker_is_open_for_work
             if input.skills is not None:
                 skill_list = []
                 # Remove all existing skills from job seeker

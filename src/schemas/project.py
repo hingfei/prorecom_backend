@@ -12,6 +12,7 @@ from src.recommendations.project_recom_engine import get_projects_recommendation
 from src.schemas.company import CompanyType
 from src.schemas.skill import SkillType
 
+
 @strawberry.input
 class CreateProjectInput:
     project_name: str
@@ -22,7 +23,7 @@ class CreateProjectInput:
     project_max_salary: Optional[int] = None
     project_desc: Optional[str]
     project_req: Optional[str]
-    project_status: Optional[str]
+    project_status: Optional[bool]
     project_exp_lvl: Optional[str]
     skills: List[int]
 
@@ -36,7 +37,7 @@ class UpdateProjectInput:
     project_max_salary: Optional[int] = None
     project_desc: Optional[str] = None
     project_req: Optional[str] = None
-    project_status: Optional[str] = None
+    project_status: Optional[bool] = None
     project_exp_lvl: Optional[str] = None
     skills: Optional[List[int]] = None
 
@@ -53,19 +54,22 @@ class ProjectType:
     project_max_salary: Optional[int]
     project_desc: Optional[str]
     project_req: Optional[str]
-    project_status: Optional[str]
+    project_status: Optional[bool]
     project_exp_lvl: Optional[str]
     skills: List[SkillType]
+
 
 @strawberry.type
 class ProjectModifyType:
     project_id: strawberry.ID
+
 
 @strawberry.type
 class ProjectResponse:
     success: bool
     project: Optional[ProjectType] = None
     message: Optional[str] = None
+
 
 @strawberry.type
 class ProjectModifyResponse:
@@ -86,7 +90,7 @@ class Query:
             return result.scalar_one() if result else None
 
     @strawberry.field
-    async def project_listing(self, info:Info, recommendation: Optional[bool] = False) -> List[ProjectType]:
+    async def project_listing(self, info: Info, recommendation: Optional[bool] = False) -> List[ProjectType]:
         async with get_session() as session:
             if recommendation:
                 user_id = await info.context.get_current_user
@@ -146,6 +150,7 @@ class Query:
 
             return projects if projects else []
 
+
 @strawberry.type
 class Mutation:
     @strawberry.mutation
@@ -158,7 +163,7 @@ class Mutation:
 
                 if company is None:
                     return ProjectModifyResponse(success=False,
-                                           message=f"Company does not exist.")
+                                                 message=f"Company does not exist.")
 
                 # Create project and add it to the session
                 new_project = ProjectModel(
@@ -188,7 +193,8 @@ class Mutation:
                     skills_processed = preprocess_skillsets(skill_list)
                     skillset_size = settings.ft_model.get_dimension()
                     if len(skills_processed) > 0:
-                        project_vector = np.mean([settings.ft_model.get_word_vector(skill) for skill in skills_processed], axis=0)
+                        project_vector = np.mean(
+                            [settings.ft_model.get_word_vector(skill) for skill in skills_processed], axis=0)
                     else:
                         project_vector = np.zeros(skillset_size)
                     new_project.project_skillset_vector = json.dumps(project_vector.tolist())
@@ -248,7 +254,8 @@ class Mutation:
                     skills_processed = preprocess_skillsets(skill_list)
                     skillset_size = settings.ft_model.get_dimension()
                     if len(skills_processed) > 0:
-                        project_vector = np.mean([settings.ft_model.get_word_vector(skill) for skill in skills_processed], axis=0)
+                        project_vector = np.mean(
+                            [settings.ft_model.get_word_vector(skill) for skill in skills_processed], axis=0)
                     else:
                         project_vector = np.zeros(skillset_size)
                     project.project_skillset_vector = json.dumps(project_vector.tolist())
