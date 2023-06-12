@@ -2,7 +2,7 @@ import src.settings as settings
 import strawberry
 import numpy as np
 import json
-from sqlalchemy import select, delete, or_
+from sqlalchemy import select, delete, or_, func
 from typing import Optional, List
 from sqlalchemy.orm import selectinload
 from conn import get_session, Project as ProjectModel, Skill as SkillModel, ProjectSkills, Company as CompanyModel
@@ -106,7 +106,7 @@ class Query:
                     selectinload(ProjectModel.skills)
                 ).where(ProjectModel.project_id.in_(project_ids))
                 result = await session.execute(query)
-                projects = result.scalars().all()
+                projects = result.scalars().unique().all()
 
                 # Create a dictionary to map project id to the project object
                 project_dict = {project.project_id: project for project in projects}
@@ -116,8 +116,11 @@ class Query:
 
                 return ordered_projects
             else:
-                query = select(ProjectModel).options(selectinload(ProjectModel.company).joinedload(CompanyModel.users),
-                                                     selectinload(ProjectModel.skills)).limit(50)
+                query = select(ProjectModel).options(
+                    selectinload(ProjectModel.company).joinedload(CompanyModel.users),
+                    selectinload(ProjectModel.skills)
+                ).order_by(func.random())
+
                 results = await session.execute(query)
                 return results.scalars().unique()
 
