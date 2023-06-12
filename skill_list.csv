@@ -1,0 +1,664 @@
+skill_id,skill_name
+1,Inside Sales
+2,Outside Sales
+3,Microsoft Office
+4,Presentation 
+5,Rapport Building
+6,Data Analysis
+7,Business Development
+8,Negotiation
+9,Presentations
+10,Persuasive Communication
+11,Organizational 
+12,Lead Generation
+13,Outbound Calls
+14,Sales
+15,Closing (Sales)
+16,Multitasking
+17,Web Development
+18,Drupal
+19,Content Management Systems
+20,Interactive Web Development
+21,React.js
+22,Git (Version Control System)
+23,Test-Driven Development (TDD)
+24,Python (Programming Language)
+25,Cascading Style Sheets (CSS)
+26,HyperText Markup Language (HTML)
+27,Application Programming Interface (API)
+28,Node.js
+29,JavaScript (Programming Language)
+30,TypeScript
+31,MongoDB
+32,Microservices
+33,PHP Frameworks
+34,Laravel
+35,JQuery
+36,JSON
+37,Ajax (Programming Language)
+38,MySQL
+39,Kotlin
+40,Java (Programming Language)
+41,React Native
+42,Android Applications
+43,Test Automation
+44,Retrofitting
+45,CSS Codes
+46,Critical Thinking
+47,Independent Thinking
+48,Analytical 
+49,Business Networking
+50,Customer Relationship Management
+51,SQL (Programming Language)
+52,Spring Framework
+53,Hibernate (Java)
+54,Spring Boot
+55,Strategic Thinking
+56,Marketing Strategies
+57,Communications
+58,Leadership
+59,Adaptability
+60,PHP (Scripting Language)
+61,Web Design
+62,Software As A Service (SaaS)
+63,Google Analytics
+64,Google Tag Manager
+65,Google Optimize
+66,Inbound Marketing
+67,Project Management
+68,PHP Development
+69,Redis
+70,Docker (Software)
+71,Google Cloud Platform (GCP)
+72,AWS CloudFormation
+73,B2B Advertising
+74,Sales Prospecting
+75,Consultative Selling
+76,Business Acumen
+77,Yii PHP Framework
+78,Selling Techniques
+79,Client Services
+80,Business Relationship Management
+81,Market Research
+82,Information Technology
+83,Shopify
+84,WooCommerce
+85,WordPress
+86,Bootstrap (Front-End Framework)
+87,Agile Software Development
+88,Cloud Infrastructure
+89,Java 11
+90,RESTful API
+91,Apache Kafka
+92,Apache Maven
+93,Flutter (Software)
+94,JIRA
+95,Microsoft PowerPoint
+96,Microsoft Word
+97,Social Media Strategy
+98,Social Media Marketing
+99,Digital Marketing
+100,Digital Advertising
+101,Software Development
+102,Graphic Design
+103,Motion Graphics
+104,Team Leadership
+105,Creative Design
+106,Verbal Communication 
+107,Retail Sales
+108,Web Applications
+109,Back End (Software Engineering)
+110,Full Stack Development
+111,Marketing
+112,Marketing Management
+113,Business Marketing
+114,Marketing Communications
+115,Marketing Materials
+116,Retail Marketing Strategy
+117,Revenue Growth
+118,Customer Acquisition Management
+119,Next.js
+120,HTML5
+121,Training And Development
+122,Recruitment Strategies
+123,Full-Cycle Recruitment
+124,Mandarin Chinese
+125,Webpack
+126,Vue.js
+127,Django (Web Framework)
+128,PostgreSQL
+129,IT Infrastructure
+130,Sales Management
+131,Strategic Planning
+132,Business Strategies
+133,Go-to-Market Strategy
+134,Brand Strategy
+135,Express.js
+136,Team Management
+137,Problem Solving
+138,Social Media Campaigns
+139,Social Media Advertising
+140,Advertisement
+141,New Product Development
+142,Financial Services
+143,Banking
+144,Information Systems
+145,Interpersonal Communications
+146,Facebook Advertising
+147,Google Ads
+148,Search Engine Optimization
+149,Facebook Analytics
+150,Computer Literacy
+151,Organizational Development
+152,Learning Management Systems
+153,Organizational Culture Change
+154,Change Management
+155,Continuous Improvement Process
+156,Team Performance Management
+157,Leadership Development
+158,Cloud Technologies
+159,MariaDB
+160,Customer Service
+161,English Language
+162,Arabic Language
+163,Thai Language
+164,Vietnamese Language
+165,Business To Business
+166,Sales Support
+167,Decision Making
+168,Team Motivation
+169,Static HTML
+170,Front End (Software Engineering)
+171,Teamwork
+172,Content Creation
+173,Copywriting
+174,Video Editing
+175,Active Listening
+176,Politeness
+177,Friendliness
+178,C# (Programming Language)
+179,Scrum (Software Development)
+180,Microsoft Visual Studio
+181,Operations
+182,Advertising Sales
+183,Swift (Programming Language)
+184,Objective-C (Programming Language)
+185,UI/UX Planning
+186,Target Market
+187,Small Business Development
+188,Relational Databases
+189,UI/UX Wireframing
+190,Mobile Application Development
+191,Angular (Web Framework)
+192,CSS Frameworks
+193,Adobe Experience Manager
+194,Outbound Sales 
+195,Cold Calling
+196,New Business Development
+197,MySQLi
+198,Delegation 
+199,Detail Oriented
+200,Managerial Communications
+201,Software Engineering
+202,Software Systems
+203,Troubleshooting (Problem Solving)
+204,Career Management
+205,Extensible Markup Language (XML)
+206,Google Workspace
+207,LinkedIn
+208,Google Data
+209,Microsoft Excel
+210,Twitter Advertising
+211,TikTok
+212,Github
+213,Community Outreach
+214,Dart (Programming Language)
+215,AWS Lambda
+216,Ruby On Rails
+217,SQL Server Analysis Services
+218,Media Planning
+219,Social Media
+220,Price Negotiation
+221,Creative Problem-Solving
+222,Listening 
+223,Business Operations
+224,Prospect Research
+225,Import/Export Logistics
+226,Proactivity
+227,Unit Testing
+228,Technical Documentation
+229,Social Networks
+230,Sales Process
+231,Travel Planning
+232,Nginx
+233,Iptables
+234,Unity Engine
+235,Game Engine
+236,Video Game Development
+237,Bahasa (Language)
+238,Self-Confidence
+239,Public Speaking
+240,Report Writing
+241,NoSQL
+242,Management
+243,Customer Relationship Building
+244,Time Management
+245,Retail Management
+246,Calmness Under Pressure
+247,Creativity
+248,Operations Management
+249,Business Communication
+250,Creative Thinking
+251,Adobe Photoshop
+252,Adobe Illustrator
+253,E-Commerce
+254,Online Marketing
+255,Online Advertising
+256,E-Marketing
+257,Social Media Management
+258,REST API Development
+259,Simple Object Access Protocol (SOAP)
+260,Computer Science
+261,C++ (Programming Language)
+262,Ruby (Programming Language)
+263,Goal-Oriented
+264,Microsoft SQL Servers
+265,SQL Server Integration Services (SSIS)
+266,Batch Scripting
+267,Linux
+268,Apache Tomcat
+269,Gwt 2.4
+270,Attitude Control
+271,Resourcefulness
+272,DevOps
+273,Spring Cloud
+274,Business-To-Consumer
+275,Salesforce
+276,Direct Selling
+277,Postman API Platform
+278,Product Knowledge
+279,Whatsapp
+280,Canva (Software)
+281,Quotations
+282,Proposal Writing
+283,Self-Discipline
+284,Self-Motivation
+285,Software Testing
+286,Food Safety And Sanitation
+287,Quick Learning
+288,Malay Language
+289,Amazon Web Services
+290,Azure DevOps
+291,Google Cloud
+292,CI/CD
+293,Docker Container
+294,Kubernetes
+295,Gitlab
+296,Bash (Scripting Language)
+297,Jenkins
+298,Animations
+299,Motion Graphic Design
+300,Motion Graphics Software
+301,Content Development
+302,Computer Hardware
+303,People Management
+304,Employee Coaching
+305,Motivational Leadership
+306,Content Management
+307,Digital Content
+308,Digital Content Management
+309,Writing
+310,Talent Acquisition
+311,Human Resource Management
+312,Software Architecture
+313,Branding
+314,Brand Management
+315,Brand Marketing
+316,Accounting
+317,Internal Auditing
+318,Internal Controls
+319,Risk Management
+320,Standard Operating Procedure
+321,Corporate Governance
+322,Digital Communications
+323,Market Trend
+324,Business Administration
+325,Research
+326,Event Management
+327,Color Matching
+328,Balanced Budgeting
+329,Visionary
+330,Spatial Abilities
+331,Strategic Negotiations
+332,Sales Presentations
+333,Advertising Copywriting
+334,SEO Copywriting
+335,HR Consulting
+336,Talent Recruitment
+337,Recruitment Planning
+338,Talent Pipelining
+339,Talent Analytics
+340,Talent Sourcing
+341,Data Management
+342,ASP.NET
+343,Business Intelligence Tools
+344,Software Project Management
+345,Business Intelligence
+346,Blockchain
+347,Solidity (Programming Language)
+348,Ethereum
+349,Project Coordination
+350,Product Marketing
+351,Content Marketing
+352,Campaign Management
+353,OpenCart
+354,Web Scraping
+355,Autodesk 3DS Max (3D Graphics Software)
+356,AutoCAD
+357,SketchUp (3D Modeling Software)
+358,V-Ray
+359,Human Resources Information System (HRIS)
+360,Negotiation Strategies
+361,Xero (Accounting Software)
+362,Search Engine Marketing
+363,Technical Sales
+364,Event Planning
+365,Public Relations
+366,Pivot Tables And Charts
+367,Research And Development
+368,Photography
+369,Document Management
+370,ASP.NET Core
+371,ASP.NET Core MVC
+372,Tableau (Business Intelligence Software)
+373,Transact-SQL
+374,Server Administration
+375,Microsoft Azure
+376,Talent Management
+377,Internal Communications
+378,Payroll Processing
+379,Employee Relations
+380,Employee Onboarding
+381,Employee Performance Management
+382,Cultural Sensitivity
+383,Enthusiasm
+384,Teaching English As A Second Language
+385,Academic Writing
+386,Academic English
+387,Business English
+388,Upselling
+389,Growth Strategies
+390,Logic Analyzer
+391,Logical Reasoning
+392,Management Consulting
+393,Facebook Marketing
+394,Advertising Campaigns
+395,Adobe Creative Suite
+396,Insurance Sales
+397,Finance
+398,Complex Problem Solving
+399,Change Agility
+400,Financial Analysis
+401,Healthcare Industry Knowledge
+402,Mortgage Loans
+403,Will And Testament Preparation
+404,Trust Products
+405,Locked-In Retirement Savings Plan (LRSP)
+406,Corporate Strategy
+407,Social Media Trends
+408,Auditing
+409,Risk Analysis
+410,Presentation Preparation
+411,Event Marketing
+412,Event Scheduling
+413,Banquet Event Orders
+414,Event Catering
+415,Event-Driven Programming
+416,Event Monitoring
+417,Project Planning
+418,Computer-Aided Design
+419,Technical Support
+420,Content Strategy
+421,Fashion Knowledge
+422,Creative Strategies
+423,Adobe InDesign
+424,IT Service Management
+425,Hardware Troubleshooting
+426,Remote Troubleshooting
+427,Digital Signage
+428,Network Infrastructure
+429,System Support
+430,Networking Hardware
+431,TCP/IP
+432,Wintel
+433,Web Services
+434,Administrative Support
+435,Cyber Security
+436,Encryption
+437,Intrusion Detection And Prevention
+438,Vulnerability Assessments
+439,Penetration Testing
+440,Security Information And Event Management (SIEM)
+441,Service-Oriented Architecture
+442,Operating Systems
+443,Licensing
+444,HVAC Repair And Maintenance
+445,Equipment Maintenance
+446,Facility Repair And Maintenance
+447,Electrical Equipment
+448,Technical Training
+449,Cleaning Products
+450,Food Manufacturing
+451,Adobe XD
+452,Information Technology Security Auditing
+453,Social 
+454,Cryptocurrency
+455,SAP Applications
+456,Application Development
+457,Creative Writing
+458,Proofreading
+459,Client Onboarding
+460,Public Relations Campaigns
+461,Digital Media Strategy
+462,Hospitality
+463,Photo Editing
+464,Mechanical Engineering
+465,Architectural Design
+466,Procurement
+467,Vendor Management
+468,Supplier Management
+469,Supply Chain
+470,Product Quality (QA/QC)
+471,Balance Sheet
+472,Profit And Loss (P&L) Management
+473,Accounts Payable
+474,Accounts Receivable
+475,SAP ERP
+476,Information Technology Consulting
+477,Functional Design
+478,Functional Specification
+479,Business Process
+480,Technology Solutions
+481,Enterprise Application Software
+482,Accounting Software
+483,Systems Analysis
+484,Email Management
+485,Cloud Computing
+486,Database Administration
+487,Linux Administration
+488,Windows System Administration
+489,Alibaba Cloud
+490,Growth Planning
+491,Purchasing
+492,Cost Control
+493,Food And Beverage Management
+494,Mass Communication
+495,Point Of Sale
+496,Customer Support
+497,Customer Complaint Resolution
+498,Customer Data Management
+499,Customer Inquiries
+500,Digital Content Creation
+501,Social Media Content Creation
+502,Business-To-Consumer (B2C) Marketing
+503,Business-To-Business (B2B) Marketing
+504,Affiliate Marketing
+505,Project Management Software
+506,Project Implementation
+507,Cisco Networking
+508,Unix
+509,Visual Design
+510,Statistics
+511,Spreadsheets
+512,Project Engineering
+513,Fashion Retail
+514,Visual Merchandising
+515,Fashion Design
+516,Strong Work Ethic
+517,Customer Engagement
+518,Solution Selling
+519,Strategic Selling
+520,Promotional Campaigns
+521,Revenue Forecasting
+522,Computer Networks
+523,Web UI
+524,User Experience Design (UX)
+525,.NET Framework
+526,Content Editing
+527,Mechanics
+528,Machinery Installation
+529,Technical Services
+530,Hotel Reservation Systems
+531,Online Hotel Reservations
+532,Network Switches
+533,Network Routing
+534,Network Security
+535,Network Diagnostics
+536,Network Analysis
+537,Office Procedures
+538,Regulatory Compliance
+539,Crisis Management
+540,Claims Processing
+541,Tax Returns
+542,Payment Processing
+543,Inbound Calls
+544,Inbound Sales
+545,Telemarketing
+546,Microsoft Office 365
+547,AWS Identity And Access Management (IAM)
+548,Analyst Relations
+549,Investment Banking
+550,Retail Experience
+551,Project Method
+552,Video Editing Software
+553,Analytical Thinking
+554,Operational Efficiency
+555,Computer Engineering
+556,Multimedia
+557,Figma (Design Software)
+558,Cantonese Chinese
+559,B2B Publications
+560,Presentation Design
+561,Product Management
+562,Account Management
+563,Sales Proposals
+564,Sales Presentation
+565,Data Entry
+566,Telephone 
+567,Ideation
+568,Analytical Techniques
+569,Disaster Recovery Plan
+570,Taking Meeting Minutes
+571,Adobe After Effects
+572,Technical Writing
+573,White Paper
+574,Email Marketing
+575,Success Driven
+576,Driven Personality
+577,Stakeholder Management
+578,Instagram Advertising
+579,Executive Recruitment
+580,Travel Arrangements
+581,Agile Methodology
+582,UI/UX Design Systems
+583,Engineering Support
+584,Patents
+585,Patent Prosecution
+586,Secretarial Experience
+587,Windows Servers
+588,ASP.NET MVC Framework
+589,Enterprise Resource Planning
+590,Systems Design
+591,Functional Requirement
+592,Functional Testing
+593,Drawing
+594,Online Teaching
+595,Assisting Teachers
+596,Child Development
+597,Working With Children
+598,Preschool Education
+599,Secondary Education
+600,Higher Education
+601,Digital Transformation
+602,Product Innovation
+603,Personal Integrity
+604,Control Objectives For Information And Related Technology (COBIT)
+605,Telecommunications
+606,Digital Content Strategy
+607,Digital Video
+608,Videography
+609,Social Media Content
+610,Social Media Monitoring
+611,Google Drive
+612,Google Docs
+613,Google Sheets
+614,Workflow Management
+615,Customer Relationship Management (CRM) Software
+616,Supply Chain Management
+617,Inventory Control
+618,Stocks (Inventory)
+619,Hotel Industry
+620,Customer Retention
+621,Aesthetics
+622,Health And Wellness Coaching
+623,Design Thinking
+624,Innovation
+625,Consulting
+626,Software Sales
+627,Firewall
+628,Aruba (Network Management Software)
+629,Generally Accepted Accounting Principles
+630,Planning
+631,Restaurant Management
+632,Test Script
+633,Software Technical Review
+634,Progressive Web Apps
+635,Product Design
+636,Data Visualization
+637,Data Collection
+638,Big Data Analytics
+639,Data Modeling
+640,Big Data
+641,Object-Oriented Programming (OOP)
+642,Trello
+643,Scripting
+644,Database Design
+645,Database Programming
+646,AppleScript
+647,iOS Development
+648,Apple Xcode
+649,QA Engineering
+650,Software QA
+651,Web Testing
+652,Mobile App Testing
+653,Integration Testing
+654,Test Strategy
+655,Selenium WebDriver
+656,QA Management
+657,Quantitative Analysis
+658,Data Scraping
+659,Machine Learning
+660,Data Science
+661,R (Programming Language)
+662,Deep Learning
+663,Artificial Intelligence
