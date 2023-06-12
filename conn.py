@@ -335,8 +335,8 @@ async def add_column():
 
 if __name__ == "__main__":
     print("Dropping and creating tables")
-    asyncio.run(_async_main())
-    asyncio.run(import_skills_from_csv())
-    asyncio.run(import_csv())
+    # asyncio.run(_async_main())
+    # asyncio.run(import_skills_from_csv())
+    # asyncio.run(import_csv())
     # asyncio.run(add_column())
     print("Done.")
