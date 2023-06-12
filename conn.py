@@ -1,12 +1,13 @@
 import asyncio
+from datetime import datetime, timedelta
+
 import src.settings as settings
-from sqlalchemy import Table, MetaData, ForeignKey, LargeBinary, text
+from sqlalchemy import Table, MetaData, ForeignKey, LargeBinary, text, Boolean, Column, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, List, Optional
 from sqlalchemy.orm import declarative_base, Mapped
-from sqlalchemy import Column, Integer, String, select
 import json
 import numpy as np
 import csv
@@ -60,9 +61,9 @@ class JobSeeker(User):
     seeker_street: str = Column(String, nullable=True)
     seeker_city: str = Column(String, nullable=True)
     seeker_state: str = Column(String, nullable=True)
-    seeker_highest_educ: Optional[str] = Column(String, nullable=True)
     seeker_resume: Optional[bytes] = Column(LargeBinary, nullable=True)
     seeker_about: Optional[str] = Column(String, nullable=True)
+    seeker_is_open_for_work: bool = Column(Boolean, default=True)
     seeker_skillset_vector: Optional[List[float]] = Column(String, nullable=True)
     users = relationship("User", backref="job_seekers")
     skills = relationship("Skill", secondary=job_seeker_skills, backref='job_seekers')
@@ -97,6 +98,18 @@ class Education(Base):
     job_seeker = relationship("JobSeeker", back_populates="educations")
 
 
+class ProjectApplication(Base):
+    __tablename__ = "project_applications"
+    project_application_id: int = Column(Integer, primary_key=True, autoincrement=True)
+    seeker_id: int = Column(Integer, ForeignKey("job_seekers.seeker_id"))
+    project_id: int = Column(Integer, ForeignKey("projects.project_id"))
+    application_status: str = Column(String, nullable=True)
+    application_date: str = Column(String, default=datetime.now().strftime('%m-%d-%Y'))
+
+    job_seeker = relationship("JobSeeker", backref="project_applications")
+    project = relationship("Project", backref="project_applications")
+
+
 class ProjectSkills(Base):
     __tablename__ = 'project_skills'
 
@@ -124,7 +137,7 @@ class Project(Base):
     project_desc: str = Column(String, nullable=True)
     project_req: str = Column(String, nullable=True)
     project_exp_lvl: str = Column(String, nullable=True)
-    project_status: str = Column(String, nullable=True)
+    project_status: bool = Column(Boolean, default=True)
     project_skillset_vector: Optional[List[float]] = Column(String, nullable=True)
     skills = relationship(
         "Skill",
@@ -204,6 +217,44 @@ def preprocess_salary(salary):
     return min_salary, max_salary
 
 
+def preprocess_post_dates(date_string):
+    current_date = datetime.now()
+
+    if re.search(r'^a day ago$', date_string):
+        converted_date = current_date - timedelta(days=1)
+    elif re.search(r'^a month ago$', date_string):
+        converted_date = current_date.replace(month=current_date.month - 1)
+    elif re.search(r'(\d+)\s*day(s)?', date_string):
+        extracted_day = re.search(r'(\d+)\s*day(s)?', date_string).group(1)
+        converted_date = current_date - timedelta(days=int(extracted_day))
+    elif re.search(r'(\d+)\s*month(s)?', date_string):
+        months_ago = int(re.search(r'(\d+)\s*month(s)?', date_string).group(1))
+        converted_date = current_date.replace(month=current_date.month - months_ago)
+    else:
+        converted_date = current_date  # Handle other cases if needed
+
+    return converted_date.strftime('%m-%d-%Y')
+
+
+async def import_skills_from_csv():
+    skills = []
+
+    with open('skill_list.csv', 'r') as file:
+        reader = csv.reader(file)
+        headers = next(reader)  # Read the header row
+
+        for row in reader:
+            skill_id, skill_name = row
+            skill = Skill(skill_id=int(skill_id), skill_name=skill_name)
+            skills.append(skill)
+
+    async with get_session() as session:
+        session.add_all(skills)
+        await session.commit()
+
+    print(f'Skills imported from skill_list.csv and saved to the database successfully.')
+
+
 async def import_csv():
     settings.load_fasttext_model()
     with open('projects_list.csv', encoding='utf-8') as file:
@@ -237,18 +288,19 @@ async def import_csv():
                 # Split the project skills into a list of skill names
                 skills = row['skills'].split('\n')
                 min_salary, max_salary = preprocess_salary(row['salary'])
+                post_dates = preprocess_post_dates(row['post_dates'])
                 # Create a new project for the company
                 project = Project(
                     project_name=row['job_title'],
                     company_id=company.company_id,
                     project_types=row['job_types'],
-                    post_dates=row['post_dates'],
+                    post_dates=post_dates,
                     project_min_salary=min_salary,
                     project_max_salary=max_salary,
                     project_desc=row['job_desc'],
                     project_req=row['job_req'],
+                    project_status=True,
                     project_exp_lvl=row['exp_lvl'],
-                    project_status='active'
                 )
 
                 # Add each skill to the project
@@ -284,6 +336,7 @@ async def add_column():
 if __name__ == "__main__":
     print("Dropping and creating tables")
     asyncio.run(_async_main())
+    asyncio.run(import_skills_from_csv())
     asyncio.run(import_csv())
     # asyncio.run(add_column())
     print("Done.")
