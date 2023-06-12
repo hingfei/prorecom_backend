@@ -45,6 +45,9 @@ async def cluster_candidates(refresh=False):
         print('clustering candidates')
         # Get candidates skillset vectors
         candidates_skillset_vectors = await get_user_skillsets()
+        if len(candidates_skillset_vectors) < 4:
+            return
+
         settings.candidates_skillset_vectors = candidates_skillset_vectors
 
         # Cluster candidates based on skillset vectors
