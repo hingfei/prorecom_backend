@@ -1,6 +1,6 @@
 import json
 import strawberry
-from sqlalchemy import select, delete, or_
+from sqlalchemy import select, delete, or_, and_
 from typing import Optional, List
 from conn import get_session, JobSeeker as JobSeekerModel, User as UserModel, Skill as SkillModel, JobSeekerSkills, \
     Education as EducationModel
@@ -115,13 +115,16 @@ class Query:
                 selectinload(JobSeekerModel.skills),
                 selectinload(JobSeekerModel.educations)
             ).where(
-                or_(
-                    JobSeekerModel.seeker_name.ilike(f"%{search_keyword}%"),
-                    JobSeekerModel.seeker_about.ilike(f"%{search_keyword}%"),
-                    JobSeekerModel.seeker_street.ilike(f"%{search_keyword}%"),
-                    JobSeekerModel.seeker_city.ilike(f"%{search_keyword}%"),
-                    JobSeekerModel.seeker_state.ilike(f"%{search_keyword}%"),
-                    JobSeekerModel.seeker_id.in_(subquery)
+                and_(
+                    or_(
+                        JobSeekerModel.seeker_name.ilike(f"%{search_keyword}%"),
+                        JobSeekerModel.seeker_about.ilike(f"%{search_keyword}%"),
+                        JobSeekerModel.seeker_street.ilike(f"%{search_keyword}%"),
+                        JobSeekerModel.seeker_city.ilike(f"%{search_keyword}%"),
+                        JobSeekerModel.seeker_state.ilike(f"%{search_keyword}%"),
+                        JobSeekerModel.seeker_id.in_(subquery)
+                    ),
+                    JobSeekerModel.seeker_is_open_for_work == True
                 )
             )
             result = await session.execute(query)
@@ -133,13 +136,14 @@ class Query:
     async def recommended_job_seeker_listing(self, info: Info, project_id: int) -> List[JobSeekerType]:
         async with get_session() as session:
             ranked_candidates = await get_candidates_recommendations(project_id)
-            candidate_ids = [candidate_id for candidate_id, _ in ranked_candidates]
-
+            print('ranked', ranked_candidates)
+            candidate_ids = [candidate_id for candidate_id, _ in ranked_candidates[:10]]
+            print('ids', candidate_ids)
             query = select(JobSeekerModel).options(
                 selectinload(JobSeekerModel.users),
                 selectinload(JobSeekerModel.skills),
                 selectinload(JobSeekerModel.educations)
-            ).where(JobSeekerModel.seeker_id.in_(candidate_ids)).limit(10)
+            ).where(JobSeekerModel.seeker_id.in_(candidate_ids))
             result = await session.execute(query)
             job_seekers = result.scalars().all()
 

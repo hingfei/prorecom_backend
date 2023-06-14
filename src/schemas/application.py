@@ -26,6 +26,7 @@ class ApplicationType:
     project_id: strawberry.ID
     application_status: Optional[str]
     application_date: Optional[str]
+    application_is_invited: Optional[bool]
     job_seeker: Optional[JobSeekerType]
     project: Optional[ProjectType]
 
@@ -84,16 +85,25 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    async def create_application(self, info: Info, project_id: int) -> ApplicationResponse:
+    async def create_application(self, info: Info, project_id: int, user_id: Optional[int] = None,
+                                 application_is_invited: Optional[bool] = False) -> ApplicationResponse:
         async with get_session() as session:
             try:
                 # Fetch the job seeker and project from the database
-                user_id = await info.context.get_current_user
                 if user_id is None:
-                    raise ValueError("User not authenticated")
+                    user_id = await info.context.get_current_user
+                    if user_id is None:
+                        raise ValueError("User not authenticated")
 
                 job_seeker_sql = select(JobSeekerModel).where(JobSeekerModel.seeker_id == user_id)
                 job_seeker = (await session.execute(job_seeker_sql)).first()
+
+                if job_seeker is None:
+                    return ApplicationResponse(
+                        success=False,
+                        project_application_id=None,
+                        message="Job seeker not found"
+                    )
 
                 project_sql = select(ProjectModel).where(ProjectModel.project_id == project_id)
                 project = (await session.execute(project_sql)).first()
@@ -110,7 +120,8 @@ class Mutation:
                     seeker_id=user_id,
                     project_id=project_id,
                     application_status='pending',
-                    application_date=datetime.now().strftime('%m-%d-%Y')
+                    application_date=datetime.now().strftime('%m-%d-%Y'),
+                    application_is_invited=application_is_invited
                 )
 
                 session.add(application)

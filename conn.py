@@ -58,6 +58,7 @@ class ProjectApplication(Base):
     project_id: int = Column(Integer, ForeignKey("projects.project_id"))
     application_status: str = Column(String, nullable=True)
     application_date: str = Column(String, default=datetime.now().strftime('%m-%d-%Y'))
+    application_is_invited: bool = Column(Boolean, nullable=True)
 
     job_seeker = relationship("JobSeeker", backref="project_applications")
     project = relationship("Project", backref="project_applications")
@@ -169,7 +170,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         async with session.begin():
             try:
                 yield session
-                # await session.commit()
             except:
                 await session.rollback()
                 raise
@@ -337,14 +337,16 @@ async def import_csv():
 async def add_column():
     async with get_session() as session:
         # Migrate the database as needed
-        await session.execute(text('alter table educations add column grade String'))
+        # await session.execute(text('alter table educations add column grade String'))
+        await session.execute(text('alter table project_applications add column application_is_invited BOOLEAN'))
+        # await session.execute(text('alter table project_applications drop column application_is_invited'))
         await session.commit()
 
 
 if __name__ == "__main__":
-    print("Dropping and creating tables")
-    # asyncio.run(_async_main())
-    # asyncio.run(import_skills_from_csv())
-    # asyncio.run(import_csv())
-    # asyncio.run(add_column())
+    # print("Dropping and creating tables")
+    # # asyncio.run(_async_main())
+    # # asyncio.run(import_skills_from_csv())
+    # # asyncio.run(import_csv())
+    asyncio.run(add_column())
     print("Done.")

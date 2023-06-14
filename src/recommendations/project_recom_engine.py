@@ -24,7 +24,7 @@ async def get_user_skillsets(seeker_id):
 
 async def get_projects_skillsets():
     async with get_session() as session:
-        sql = select(ProjectModel)
+        sql = select(ProjectModel).where(ProjectModel.project_status == True)
         projects_result = await session.execute(sql)
         projects = projects_result.scalars().all()
 

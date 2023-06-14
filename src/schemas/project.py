@@ -4,7 +4,7 @@ import src.settings as settings
 import strawberry
 import numpy as np
 import json
-from sqlalchemy import select, delete, or_, func
+from sqlalchemy import select, delete, or_, func, and_
 from typing import Optional, List
 from sqlalchemy.orm import selectinload
 from conn import get_session, Project as ProjectModel, Skill as SkillModel, ProjectSkills, Company as CompanyModel, \
@@ -51,6 +51,7 @@ class ProjectApplicationType:
     seeker_id: strawberry.ID
     project_id: strawberry.ID
     application_status: Optional[str]
+    application_is_invited: Optional[bool]
     job_seeker: Optional[JobSeekerType]
 
 
@@ -132,9 +133,9 @@ class Query:
                 query = select(ProjectModel).options(
                     selectinload(ProjectModel.company).joinedload(CompanyModel.users),
                     selectinload(ProjectModel.skills)
-                ).order_by(func.random())
-
+                ).where(ProjectModel.project_status == True).order_by(func.random())
                 results = await session.execute(query)
+
                 return results.scalars().unique()
 
     @strawberry.field
@@ -144,14 +145,18 @@ class Query:
                 selectinload(ProjectModel.company).joinedload(CompanyModel.users),
                 selectinload(ProjectModel.skills)
             ).where(
-                or_(
-                    ProjectModel.project_name.ilike(f"%{search_keyword}%"),
-                    ProjectModel.project_desc.ilike(f"%{search_keyword}%"),
-                    ProjectModel.project_req.ilike(f"%{search_keyword}%")
+                and_(
+                    or_(
+                        ProjectModel.project_name.ilike(f"%{search_keyword}%"),
+                        ProjectModel.project_desc.ilike(f"%{search_keyword}%"),
+                        ProjectModel.project_req.ilike(f"%{search_keyword}%")
+                    ),
+                    ProjectModel.project_status == True
                 )
             )
             result = await session.execute(query)
             projects = result.scalars().all()
+
             return projects
 
     @strawberry.field

@@ -10,7 +10,8 @@ from conn import get_session, JobSeeker as JobSeekerModel, Project as ProjectMod
 
 async def get_user_skillsets():
     async with get_session() as session:
-        query = select(JobSeekerModel).options(selectinload(JobSeekerModel.users))
+        query = select(JobSeekerModel).options(selectinload(JobSeekerModel.users)).where(
+            JobSeekerModel.seeker_is_open_for_work == True)
         job_seekers_result = await session.execute(query)
         job_seekers = job_seekers_result.scalars().all()
 
@@ -68,7 +69,8 @@ async def get_ranked_candidates(project_vector):
     await cluster_candidates()
 
     # Determine the closest cluster to the project skillset vector
-    cluster_similarities = [cosine_similarity(project_vector.reshape(1, -1), centroid.reshape(1, -1)).item() for centroid
+    cluster_similarities = [cosine_similarity(project_vector.reshape(1, -1), centroid.reshape(1, -1)).item() for
+                            centroid
                             in settings.candidates_centroids]
     closest_cluster_idx = np.argmax(cluster_similarities)
 
@@ -76,13 +78,13 @@ async def get_ranked_candidates(project_vector):
 
     # Compute cosine similarity between project vector and candidates vectors within closest cluster
     cluster_candidate_skillset_vectors = [settings.candidates_skillset_vectors[i] for i in
-                                        settings.candidate_clusters[closest_cluster_idx]]
+                                          settings.candidate_clusters[closest_cluster_idx]]
     cluster_candidate_vectors = [v[0] for v in cluster_candidate_skillset_vectors]
     cosine_similarities = cosine_similarity(project_vector.reshape(1, -1), cluster_candidate_vectors)
 
     # Rank candidates by cosine similarity score
     ranked_candidates = [(cluster_candidate_skillset_vectors[i][1], cosine_similarities[0][i])
-                       for i in range(len(cluster_candidate_vectors))]
+                         for i in range(len(cluster_candidate_vectors))]
     ranked_candidates = sorted(ranked_candidates, key=lambda x: x[1], reverse=True)
 
     # Show recommendation
