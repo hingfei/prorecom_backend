@@ -4,16 +4,13 @@ from typing import List
 import strawberry
 from pydantic.class_validators import Optional
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from strawberry.types import Info
+
 from conn import get_session, JobSeeker as JobSeekerModel, Project as ProjectModel, \
     ProjectApplication as ProjectApplicationModel
 from src.schemas.job_seeker import JobSeekerType
 from src.schemas.project import ProjectType
-
-
-@strawberry.input
-class CreateApplicationInput:
-    seeker_id: strawberry.ID
-    project_id: strawberry.ID
 
 
 @strawberry.input
@@ -28,6 +25,7 @@ class ApplicationType:
     seeker_id: strawberry.ID
     project_id: strawberry.ID
     application_status: Optional[str]
+    application_date: Optional[str]
     job_seeker: Optional[JobSeekerType]
     project: Optional[ProjectType]
 
@@ -35,22 +33,31 @@ class ApplicationType:
 @strawberry.type
 class ApplicationResponse:
     success: bool
-    application_id: int
+    project_application_id: Optional[int]
     message: Optional[str]
 
 
 @strawberry.type
 class Query:
     @strawberry.field
-    async def get_job_seeker_applications(self, seeker_id: strawberry.ID) -> List[ApplicationType]:
+    async def get_job_seeker_applications(self, info: Info) -> List[ApplicationType]:
         async with get_session() as session:
             try:
-                # Fetch the job seeker's applications
-                applications_sql = select(ProjectApplicationModel).where(
-                    ProjectApplicationModel.seeker_id == int(seeker_id)
-                )
-                applications = await session.execute(applications_sql)
+                # Fetch the job seeker and project from the database
+                user_id = await info.context.get_current_user
+                if user_id is None:
+                    raise ValueError("User not authenticated")
 
+                # Fetch the job seeker's applications with eagerly loaded projects, companies, and skills
+                applications_sql = select(ProjectApplicationModel).options(
+                    selectinload(ProjectApplicationModel.project).options(
+                        selectinload(ProjectModel.company),
+                        selectinload(ProjectModel.skills)
+                    ), selectinload(ProjectApplicationModel.job_seeker)
+                ).where(ProjectApplicationModel.seeker_id == int(user_id)).order_by(
+                    ProjectApplicationModel.project_application_id.desc())
+
+                applications = await session.execute(applications_sql)
                 return applications.scalars().all()
 
             except Exception as e:
@@ -77,34 +84,31 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    async def create_application(self, input: CreateApplicationInput) -> ApplicationResponse:
+    async def create_application(self, info: Info, project_id: int) -> ApplicationResponse:
         async with get_session() as session:
             try:
                 # Fetch the job seeker and project from the database
-                job_seeker_sql = select(JobSeekerModel).where(JobSeekerModel.seeker_id == input.seeker_id)
+                user_id = await info.context.get_current_user
+                if user_id is None:
+                    raise ValueError("User not authenticated")
+
+                job_seeker_sql = select(JobSeekerModel).where(JobSeekerModel.seeker_id == user_id)
                 job_seeker = (await session.execute(job_seeker_sql)).first()
 
-                if job_seeker is None:
-                    return ApplicationResponse(
-                        success=False,
-                        application_id=None,
-                        message="Job seeker not found"
-                    )
-
-                project_sql = select(ProjectModel).where(ProjectModel.project_id == input.project_id)
+                project_sql = select(ProjectModel).where(ProjectModel.project_id == project_id)
                 project = (await session.execute(project_sql)).first()
 
                 if project is None:
                     return ApplicationResponse(
                         success=False,
-                        application_id=None,
+                        project_application_id=None,
                         message="Project not found"
                     )
 
                 # Create a new project application with default status as 'pending'
                 application = ProjectApplicationModel(
-                    job_seeker=job_seeker,
-                    project=project,
+                    seeker_id=user_id,
+                    project_id=project_id,
                     application_status='pending',
                     application_date=datetime.now().strftime('%m-%d-%Y')
                 )
@@ -114,14 +118,14 @@ class Mutation:
 
                 return ApplicationResponse(
                     success=True,
-                    application_id=application.project_application_id,
+                    project_application_id=None,
                     message="Application created successfully"
                 )
 
             except Exception as e:
                 return ApplicationResponse(
                     success=False,
-                    application_id=None,
+                    project_application_id=None,
                     message=str(e)
                 )
 
@@ -130,15 +134,12 @@ class Mutation:
         async with get_session() as session:
             try:
                 # Fetch the project application from the database
-                application_sql = select(ProjectApplicationModel).where(
-                    ProjectApplicationModel.project_application_id == input.project_application_id
-                )
-                application = (await session.execute(application_sql)).first()
+                application = await session.get(ProjectApplicationModel, input.project_application_id)
 
                 if application is None:
                     return ApplicationResponse(
                         success=False,
-                        application_id=None,
+                        project_application_id=None,
                         message="Application not found"
                     )
 
@@ -150,13 +151,13 @@ class Mutation:
 
                 return ApplicationResponse(
                     success=True,
-                    application_id=application.project_application_id,
+                    project_application_id=None,
                     message="Application updated successfully"
                 )
 
             except Exception as e:
                 return ApplicationResponse(
                     success=False,
-                    application_id=None,
+                    project_application_id=None,
                     message=str(e)
                 )

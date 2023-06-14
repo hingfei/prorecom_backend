@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import src.settings as settings
 import strawberry
 import numpy as np
@@ -5,11 +7,13 @@ import json
 from sqlalchemy import select, delete, or_, func
 from typing import Optional, List
 from sqlalchemy.orm import selectinload
-from conn import get_session, Project as ProjectModel, Skill as SkillModel, ProjectSkills, Company as CompanyModel
+from conn import get_session, Project as ProjectModel, Skill as SkillModel, ProjectSkills, Company as CompanyModel, \
+    ProjectApplication as ProjectApplicationModel
 from strawberry.types import Info
 from src.recommendations.project_recom_engine import get_projects_recommendations, preprocess_skillsets, \
     cluster_projects
 from src.schemas.company import CompanyType
+from src.schemas.job_seeker import JobSeekerType
 from src.schemas.skill import SkillType
 
 
@@ -18,7 +22,6 @@ class CreateProjectInput:
     project_name: str
     company_id: strawberry.ID
     project_types: Optional[str]
-    post_dates: Optional[str]
     project_min_salary: Optional[int] = None
     project_max_salary: Optional[int] = None
     project_desc: Optional[str]
@@ -43,6 +46,15 @@ class UpdateProjectInput:
 
 
 @strawberry.type
+class ProjectApplicationType:
+    project_application_id: strawberry.ID
+    seeker_id: strawberry.ID
+    project_id: strawberry.ID
+    application_status: Optional[str]
+    job_seeker: Optional[JobSeekerType]
+
+
+@strawberry.type
 class ProjectType:
     project_id: strawberry.ID
     project_name: str
@@ -57,6 +69,7 @@ class ProjectType:
     project_status: Optional[bool]
     project_exp_lvl: Optional[str]
     skills: List[SkillType]
+    project_applications: List[ProjectApplicationType]
 
 
 @strawberry.type
@@ -85,6 +98,8 @@ class Query:
         async with get_session() as session:
             query = select(ProjectModel).options(selectinload(ProjectModel.company).joinedload(CompanyModel.users),
                                                  selectinload(ProjectModel.skills),
+                                                 selectinload(ProjectModel.project_applications).selectinload(
+                                                     ProjectApplicationModel.job_seeker)
                                                  ).where(ProjectModel.project_id == project_id)
             result = await session.execute(query)
             return result.scalar_one() if result else None
@@ -98,9 +113,7 @@ class Query:
                     raise ValueError("User not authenticated")
 
                 ranked_projects = await get_projects_recommendations(user_id)
-                # print('ranked projects', ranked_projects)
                 project_ids = [i for i, _ in ranked_projects]
-                # print("project id", project_ids)
                 query = select(ProjectModel).options(
                     selectinload(ProjectModel.company).joinedload(CompanyModel.users),
                     selectinload(ProjectModel.skills)
@@ -146,7 +159,8 @@ class Query:
         async with get_session() as session:
             query = select(ProjectModel).options(
                 selectinload(ProjectModel.company).joinedload(CompanyModel.users),
-                selectinload(ProjectModel.skills)
+                selectinload(ProjectModel.skills),
+                selectinload(ProjectModel.project_applications).selectinload(ProjectApplicationModel.job_seeker)
             ).where(ProjectModel.company_id == company_id).order_by(ProjectModel.project_id.desc())
             result = await session.execute(query)
             projects = result.scalars().all()
@@ -173,7 +187,7 @@ class Mutation:
                     project_name=input.project_name,
                     company_id=input.company_id,
                     project_types=input.project_types,
-                    post_dates=input.post_dates,
+                    post_dates=datetime.now().strftime('%m-%d-%Y'),
                     project_min_salary=input.project_min_salary,
                     project_max_salary=input.project_max_salary,
                     project_desc=input.project_desc,

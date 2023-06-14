@@ -263,14 +263,12 @@ class Mutation:
 
             # Update educations of job seeker
             if input.educations is not None:
-                print('educations', input.educations)
                 if len(input.educations) == 0:
                     # job_seeker.educations = []
                     await session.execute(
                         delete(EducationModel).where(EducationModel.job_seeker_id == job_seeker.seeker_id))
                 else:
                     for education_input in input.educations:
-                        print("input", education_input)
                         education = await session.get(EducationModel, education_input.education_id)
                         if education is not None:
                             if education_input.education_level is not None:

@@ -2,7 +2,8 @@ import asyncio
 from datetime import datetime, timedelta
 
 import src.settings as settings
-from sqlalchemy import Table, MetaData, ForeignKey, LargeBinary, text, Boolean, Column, Integer, String, select
+from sqlalchemy import Table, MetaData, ForeignKey, LargeBinary, text, Boolean, Column, Integer, String, select, \
+    DateTime
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from contextlib import asynccontextmanager
@@ -48,6 +49,18 @@ job_seeker_skills = Table('job_seeker_skills', Base.metadata,
                           Column('skill_id', String, ForeignKey('skills.skill_id'), primary_key=True),
                           extend_existing=True
                           )
+
+
+class ProjectApplication(Base):
+    __tablename__ = "project_applications"
+    project_application_id: int = Column(Integer, primary_key=True, autoincrement=True)
+    seeker_id: int = Column(Integer, ForeignKey("job_seekers.seeker_id"))
+    project_id: int = Column(Integer, ForeignKey("projects.project_id"))
+    application_status: str = Column(String, nullable=True)
+    application_date: str = Column(String, default=datetime.now().strftime('%m-%d-%Y'))
+
+    job_seeker = relationship("JobSeeker", backref="project_applications")
+    project = relationship("Project", backref="project_applications")
 
 
 class JobSeeker(User):
@@ -98,16 +111,14 @@ class Education(Base):
     job_seeker = relationship("JobSeeker", back_populates="educations")
 
 
-class ProjectApplication(Base):
-    __tablename__ = "project_applications"
-    project_application_id: int = Column(Integer, primary_key=True, autoincrement=True)
-    seeker_id: int = Column(Integer, ForeignKey("job_seekers.seeker_id"))
-    project_id: int = Column(Integer, ForeignKey("projects.project_id"))
-    application_status: str = Column(String, nullable=True)
-    application_date: str = Column(String, default=datetime.now().strftime('%m-%d-%Y'))
-
-    job_seeker = relationship("JobSeeker", backref="project_applications")
-    project = relationship("Project", backref="project_applications")
+class Notification(Base):
+    __tablename__ = "notifications"
+    notification_id: int = Column(Integer, primary_key=True, autoincrement=True)
+    sender_id: int = Column(Integer, nullable=False)
+    receiver_id: int = Column(Integer, nullable=False)
+    message: str = Column(String, nullable=False)
+    is_read: bool = Column(Boolean, default=False)
+    created_at: datetime = Column(DateTime, default=datetime.utcnow)
 
 
 class ProjectSkills(Base):
@@ -267,7 +278,6 @@ async def import_csv():
                 company = company.scalar()
                 if company is None:
                     hashed_password = settings.hash_password(row['company_name'].lower().replace(' ', ''))
-                    print('hash password', hashed_password)
                     # If the company doesn't exist, create a new one
                     company = Company(
                         user_name=row['company_name'].lower().replace(' ', ''),  # Use company name as the username
@@ -282,8 +292,6 @@ async def import_csv():
                     await session.refresh(company)
                 else:
                     print("exists")
-                    # company = company.company_id
-                    print("run here")
 
                 # Split the project skills into a list of skill names
                 skills = row['skills'].split('\n')
@@ -335,8 +343,8 @@ async def add_column():
 
 if __name__ == "__main__":
     print("Dropping and creating tables")
-    asyncio.run(_async_main())
-    asyncio.run(import_skills_from_csv())
-    asyncio.run(import_csv())
+    # asyncio.run(_async_main())
+    # asyncio.run(import_skills_from_csv())
+    # asyncio.run(import_csv())
     # asyncio.run(add_column())
     print("Done.")
