@@ -78,6 +78,8 @@ class JobSeeker(User):
     seeker_resume: Optional[bytes] = Column(LargeBinary, nullable=True)
     seeker_about: Optional[str] = Column(String, nullable=True)
     seeker_is_open_for_work: bool = Column(Boolean, default=True)
+    seeker_profile_pic: str = Column(String, nullable=True)
+    seeker_resume: str = Column(String, nullable=True)
     seeker_skillset_vector: Optional[List[float]] = Column(String, nullable=True)
     users = relationship("User", backref="job_seekers")
     skills = relationship("Skill", secondary=job_seeker_skills, backref='job_seekers')
@@ -95,6 +97,7 @@ class Company(User):
     company_street: str = Column(String, nullable=True)
     company_city: str = Column(String, nullable=True)
     company_state: str = Column(String, nullable=True)
+    company_profile_pic: str = Column(String, nullable=True)
     users = relationship("User", backref="companies")
     __mapper_args__ = {"polymorphic_identity": "companies"}
 
@@ -338,8 +341,8 @@ async def add_column():
     async with get_session() as session:
         # Migrate the database as needed
         # await session.execute(text('alter table educations add column grade String'))
-        await session.execute(text('alter table project_applications add column application_is_invited BOOLEAN'))
-        # await session.execute(text('alter table project_applications drop column application_is_invited'))
+        # await session.execute(text('alter table companies add column company_profile_pic VARCHAR'))
+        # await session.execute(text('alter table job_seekers drop column seeker_resume'))
         await session.commit()
 
 

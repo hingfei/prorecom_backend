@@ -1,4 +1,7 @@
 import json
+import os
+import uuid
+
 import strawberry
 from sqlalchemy import select, delete, or_, and_
 from typing import Optional, List
@@ -67,7 +70,8 @@ class JobSeekerType:
     seeker_street: Optional[str]
     seeker_city: Optional[str]
     seeker_state: Optional[str]
-    seeker_resume: Optional[Upload]
+    seeker_resume: Optional[str]
+    seeker_profile_pic: Optional[str]
     seeker_about: Optional[str]
     seeker_is_open_for_work: Optional[bool]
     skills: List[SkillType]
@@ -358,4 +362,77 @@ class Mutation:
 
             except Exception as e:
                 # Return an error response with the error message
+                return JobSeekerResponse(success=False, job_seeker=None, message=str(e))
+
+    @strawberry.mutation
+    async def upload_resume(self, seeker_id: int, seeker_resume: Upload) -> JobSeekerResponse:
+        async with get_session() as session:
+            try:
+                # Retrieve the job seeker from the database
+                job_seeker = await session.get(JobSeekerModel, seeker_id)
+                if not job_seeker:
+                    return JobSeekerResponse(success=False, job_seeker=None,
+                                             message=f"Job Seeker not found.")
+
+                project_directory = os.path.join("..", "prorecom_frontend", "public", "images", "jobseekers", "resumes")
+
+                # Generate a unique filename
+                file_extension = seeker_resume.filename.split(".")[-1]
+                unique_filename = f"{seeker_id}_resume_{uuid.uuid4().hex}.{file_extension}"
+
+                # Delete the old resume file if it exists
+                if job_seeker.seeker_resume:
+                    old_file_path = os.path.join(project_directory, job_seeker.seeker_resume)
+                    if os.path.exists(old_file_path):
+                        os.remove(old_file_path)
+
+                # Save the new resume file
+                file_path = os.path.join(project_directory, unique_filename)
+                with open(file_path, "wb") as file:
+                    file.write(await seeker_resume.read())
+
+                # Update the seeker_resume column in the JobSeeker table
+                job_seeker.seeker_resume = unique_filename
+                await session.commit()
+
+                return JobSeekerResponse(success=True, job_seeker=None, message="Resume uploaded successfully")
+
+            except Exception as e:
+                # Handle the error and return an appropriate response
+                return JobSeekerResponse(success=False, job_seeker=None, message=str(e))
+
+    @strawberry.mutation
+    async def upload_seeker_profile_pic(self, user_id: int, profile_pic: Upload) -> JobSeekerResponse:
+        async with get_session() as session:
+            try:
+                # Retrieve the job seeker from the database
+                job_seeker = await session.get(JobSeekerModel, user_id)
+                if not job_seeker:
+                    return JobSeekerResponse(success=False, job_seeker=None, message=f"Job Seeker not found.")
+
+                project_directory = os.path.join("..", "prorecom_frontend", "public", "images", "profile-pics")
+
+                # Generate a unique filename
+                file_extension = profile_pic.filename.split(".")[-1]
+                unique_filename = f"{user_id}_profile_{uuid.uuid4().hex}.{file_extension}"
+
+                # Delete the old profile picture file if it exists
+                if job_seeker.seeker_profile_pic:
+                    old_file_path = os.path.join(project_directory, job_seeker.seeker_profile_pic)
+                    if os.path.exists(old_file_path):
+                        os.remove(old_file_path)
+
+                # Save the new profile picture file
+                file_path = os.path.join(project_directory, unique_filename)
+                with open(file_path, "wb") as file:
+                    file.write(await profile_pic.read())
+
+                # Update the seeker_profile_pic column in the JobSeeker table
+                job_seeker.seeker_profile_pic = unique_filename
+                await session.commit()
+
+                return JobSeekerResponse(success=True, job_seeker=None, message="Profile picture uploaded successfully")
+
+            except Exception as e:
+                # Handle the error and return an appropriate response
                 return JobSeekerResponse(success=False, job_seeker=None, message=str(e))

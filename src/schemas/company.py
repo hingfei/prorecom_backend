@@ -1,7 +1,11 @@
+import os
+import uuid
+
 import strawberry
 from typing import Optional, List
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
+from strawberry.file_uploads import Upload
 from strawberry.types import Info
 from conn import get_session, Company as CompanyModel, User as UserModel, Project as ProjectModel
 from src.schemas.user import UserType
@@ -66,6 +70,7 @@ class CompanyType:
     company_street: Optional[str]
     company_city: Optional[str]
     company_state: Optional[str]
+    company_profile_pic: Optional[str]
     projects: Optional[List[ProjectListingType]]
 
 
@@ -231,4 +236,40 @@ class Mutation:
 
             except Exception as e:
                 # Return an error response with the error message
+                return CompanyResponse(success=False, message=str(e))
+
+    @strawberry.mutation
+    async def upload_company_profile_pic(self, user_id: int, profile_pic: Upload) -> CompanyResponse:
+        async with get_session() as session:
+            try:
+                # Retrieve the company from the database
+                company = await session.get(CompanyModel, user_id)
+                if not company:
+                    return CompanyResponse(success=False, message=f"Company not found.")
+
+                project_directory = os.path.join("..", "prorecom_frontend", "public", "images", "profile-pics")
+
+                # Generate a unique filename
+                file_extension = profile_pic.filename.split(".")[-1]
+                unique_filename = f"{user_id}_profile_{uuid.uuid4().hex}.{file_extension}"
+
+                # Delete the old profile picture file if it exists
+                if company.company_profile_pic:
+                    old_file_path = os.path.join(project_directory, company.company_profile_pic)
+                    if os.path.exists(old_file_path):
+                        os.remove(old_file_path)
+
+                # Save the new profile picture file
+                file_path = os.path.join(project_directory, unique_filename)
+                with open(file_path, "wb") as file:
+                    file.write(await profile_pic.read())
+
+                # Update the seeker_profile_pic column in the JobSeeker table
+                company.company_profile_pic = unique_filename
+                await session.commit()
+
+                return CompanyResponse(success=True,  message="Profile picture uploaded successfully")
+
+            except Exception as e:
+                # Handle the error and return an appropriate response
                 return CompanyResponse(success=False, message=str(e))
