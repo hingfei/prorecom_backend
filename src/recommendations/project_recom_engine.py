@@ -122,14 +122,3 @@ async def get_projects_recommendations(seeker_id):
         ranked_projects = await get_ranked_projects(user_skillset_vector)
 
         return ranked_projects
-
-
-async def get_candidates_recommendations(project_id):
-    async with get_session() as session:
-        # Retrieve skillsets vector from databases
-        project_skillset_vector = await get_user_skillsets(project_id)
-
-        # Get ranked items
-        ranked_candidates = await get_ranked_projects(project_skillset_vector)
-
-        return ranked_candidates
