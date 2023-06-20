@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 
 import strawberry
+from jwt import InvalidTokenError, ExpiredSignatureError
 from sqlalchemy import select, func
 from strawberry.types import Info
 
@@ -27,8 +28,10 @@ class NotificationType:
 
 @strawberry.type
 class UserNotificationCountType:
-    unread_count: int
-    notifications: List[NotificationType]
+    success: bool
+    message: Optional[str] = None
+    unread_count: Optional[int] = None
+    notifications: Optional[List[NotificationType]] = None
 
 
 @strawberry.type
@@ -45,26 +48,45 @@ class Query:
                                      unread_only: Optional[bool] = False) -> UserNotificationCountType:
         async with get_session() as session:
             # Fetch the job seeker and project from the database
-            user_id = await info.context.get_current_user
-            if user_id is None:
-                raise ValueError("User not authenticated")
+            try:
+                user_id = await info.context.get_current_user
+                # if user_id is None:
+                #     raise Exception("User not authenticated")
+            except Exception as e:
+                return UserNotificationCountType(
+                    success=False,
+                    message=str(e)
+                )
 
-            query = select(NotificationModel).where(NotificationModel.receiver_id == user_id)
-            if unread_only:
-                query = query.where(NotificationModel.is_read == False)
+            try:
+                if user_id:
+                    query = select(NotificationModel).where(NotificationModel.receiver_id == user_id)
+                    if unread_only:
+                        query = query.where(NotificationModel.is_read == False)
 
-            unread_count = await session.execute(
-                query.where(NotificationModel.is_read == False).with_only_columns(func.count()))
+                    unread_count = await session.execute(
+                        query.where(NotificationModel.is_read == False).with_only_columns(func.count()))
 
-            notifications = await session.execute(query.order_by(NotificationModel.created_at.desc()))
+                    notifications = await session.execute(query.order_by(NotificationModel.created_at.desc()))
 
-            # query = query.order_by(NotificationModel.created_at.desc())
-            # notifications = await session.execute(query)
+                    # query = query.order_by(NotificationModel.created_at.desc())
+                    # notifications = await session.execute(query)
 
-            return UserNotificationCountType(
-                unread_count=unread_count.scalar(),
-                notifications=notifications.scalars().unique().all()
-            )
+                    return UserNotificationCountType(
+                        success=True,
+                        unread_count=unread_count.scalar(),
+                        notifications=notifications.scalars().unique().all()
+                    )
+                else:
+                    return UserNotificationCountType(
+                        success=False,
+                        message="Not able to retrieve notification"
+                    )
+            except Exception as e:
+                return UserNotificationCountType(
+                    success=False,
+                    message=str(e)
+                )
 
 
 @strawberry.type
