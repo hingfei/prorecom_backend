@@ -76,6 +76,7 @@ class JobSeekerType:
     seeker_is_open_for_work: Optional[bool]
     skills: List[SkillType]
     educations: List[EducationType]
+    similarity_score: Optional[float] = None
 
 
 @strawberry.type
@@ -155,7 +156,12 @@ class Query:
             job_seeker_dict = {job_seeker.seeker_id: job_seeker for job_seeker in job_seekers}
 
             # Reorder the job seekers based on the candidate_ids sequence
-            ordered_job_seekers = [job_seeker_dict[candidate_id] for candidate_id in candidate_ids]
+            ordered_job_seekers = []
+            for candidate_id, similarity_score in ranked_candidates:
+                job_seeker = job_seeker_dict.get(candidate_id)
+                if job_seeker:
+                    job_seeker.similarity_score = similarity_score
+                    ordered_job_seekers.append(job_seeker)
 
             return ordered_job_seekers
 

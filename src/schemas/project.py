@@ -71,6 +71,7 @@ class ProjectType:
     project_exp_lvl: Optional[str]
     skills: List[SkillType]
     project_applications: List[ProjectApplicationType]
+    similarity_score: Optional[float] = None
 
 
 @strawberry.type
@@ -126,7 +127,12 @@ class Query:
                 project_dict = {project.project_id: project for project in projects}
 
                 # Reorder the projects based on the project_ids sequence
-                ordered_projects = [project_dict[project_id] for project_id in project_ids]
+                ordered_projects = []
+                for project_id, similarity_score in ranked_projects:
+                    project = project_dict.get(project_id)
+                    if project:
+                        project.similarity_score = similarity_score
+                        ordered_projects.append(project)
 
                 return ordered_projects
             else:
@@ -135,8 +141,12 @@ class Query:
                     selectinload(ProjectModel.skills)
                 ).where(ProjectModel.project_status == True).order_by(func.random())
                 results = await session.execute(query)
-
-                return results.scalars().unique()
+                projects = results.scalars().unique().all()
+                
+                for project in projects:
+                    project.similarity_score = None
+                    
+                return projects
 
     @strawberry.field
     async def search_projects(self, search_keyword: str) -> List[ProjectType]:
@@ -156,6 +166,9 @@ class Query:
             )
             result = await session.execute(query)
             projects = result.scalars().all()
+            
+            for project in projects:
+                project.similarity_score = None
 
             return projects
 
