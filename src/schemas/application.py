@@ -13,12 +13,14 @@ from src.schemas.job_seeker import JobSeekerType
 from src.schemas.project import ProjectType
 
 
+# Input class for updating the application
 @strawberry.input
 class UpdateApplicationInput:
     project_application_id: strawberry.ID
     application_status: Optional[str] = None
 
 
+# Type definition for an application
 @strawberry.type
 class ApplicationType:
     project_application_id: strawberry.ID
@@ -31,6 +33,7 @@ class ApplicationType:
     project: Optional[ProjectType]
 
 
+# Type definition for the application response
 @strawberry.type
 class ApplicationResponse:
     success: bool
@@ -38,8 +41,10 @@ class ApplicationResponse:
     message: Optional[str]
 
 
+# Type definition for the Query class
 @strawberry.type
 class Query:
+    # Query to get job seeker's applications
     @strawberry.field
     async def get_job_seeker_applications(self, info: Info) -> List[ApplicationType]:
         async with get_session() as session:
@@ -65,6 +70,7 @@ class Query:
                 # Return an empty list if an error occurs
                 return []
 
+    # Query to get project's applications
     @strawberry.field
     async def get_project_applications(self, project_id: strawberry.ID) -> List[ApplicationType]:
         async with get_session() as session:
@@ -82,8 +88,10 @@ class Query:
                 return []
 
 
+# Type definition for the Mutation class
 @strawberry.type
 class Mutation:
+    # Mutation to create a new application
     @strawberry.mutation
     async def create_application(self, info: Info, project_id: int, user_id: Optional[int] = None,
                                  application_is_invited: Optional[bool] = False) -> ApplicationResponse:
@@ -140,6 +148,7 @@ class Mutation:
                     message=str(e)
                 )
 
+    # Mutation to update an application
     @strawberry.mutation
     async def update_application(self, input: UpdateApplicationInput) -> ApplicationResponse:
         async with get_session() as session:

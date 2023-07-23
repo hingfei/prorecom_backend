@@ -16,15 +16,17 @@ from datetime import datetime
 from decouple import config
 from jwt import decode, InvalidTokenError, ExpiredSignatureError
 
+# JWT_SECRET and JWT_ALGORITHM are read from environment variables
 JWT_SECRET = config('secret')
 JWT_ALGORITHM = config('algorithm')
 
 
+# Custom Exception to handle session expiration
 class SessionExpired(Exception):
     pass
 
 
-# TODO: CHECK IF TOKEN IS EXPIRED
+# Function to check if a JWT token is expired
 def is_token_expired(token: str) -> Optional[bool]:
     try:
         payload = decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -37,22 +39,27 @@ def is_token_expired(token: str) -> Optional[bool]:
         return None
 
 
+# Custom context class that extends BaseContext
 class Context(BaseContext):
     @cached_property
     async def get_current_user(self) -> int:
+        # Check if the Authorization header exists in the request
         if not self.request.headers.get("Authorization", None):
             return None
 
         try:
+            # Extract the token from the Authorization header
             authorization = self.request.headers.get("Authorization", None)
             print("authorization", authorization)
             scheme, token = authorization.split()
             if scheme.lower() != "bearer":
                 raise ValueError("Invalid authentication scheme")
 
+            # Decode the token to get the user_id
             payload = decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
             user_id = payload["user_id"]
 
+            # Check if the token has expired
             if "exp" in payload and payload["exp"] < datetime.utcnow().timestamp():
                 raise Exception("Session has expired")
 
@@ -64,9 +71,11 @@ class Context(BaseContext):
                 raise Exception("Session has expired")
 
 
+# Type alias for Info
 Info = _Info[Context, RootValueType]
 
 
+# Function to get the context, used as a context_getter for GraphQLRouter
 async def get_context() -> Context:
     return Context()
 
@@ -84,5 +93,7 @@ class Mutation(UserMutation, ProjectMutation, SeekerMutation, CompanyMutation, E
     pass
 
 
+# Create the Strawberry schema with combined query and mutation
 schema = strawberry.Schema(query=Query, mutation=Mutation)
+# Create the GraphQL app using the schema and context_getter
 graphql_app = GraphQLRouter(schema, context_getter=get_context)

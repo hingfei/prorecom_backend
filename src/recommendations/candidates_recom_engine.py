@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from conn import get_session, JobSeeker as JobSeekerModel, Project as ProjectModel
 
 
+# Function to retrieve skillsets of job seekers who are open for work
 async def get_user_skillsets():
     async with get_session() as session:
         query = select(JobSeekerModel).options(selectinload(JobSeekerModel.users)).where(
@@ -27,6 +28,7 @@ async def get_user_skillsets():
         return user_skillsets
 
 
+# Function to retrieve the skillset vector of a project
 async def get_project_skillset(project_id):
     async with get_session() as session:
         query = select(ProjectModel).where(ProjectModel.project_id == project_id)
@@ -41,6 +43,7 @@ async def get_project_skillset(project_id):
         return project_skillset_vector
 
 
+# Function to cluster the candidates based on their skillset vectors
 async def cluster_candidates(refresh=False):
     if settings.candidate_clusters is None or refresh:
         print('clustering candidates')
@@ -64,6 +67,7 @@ async def cluster_candidates(refresh=False):
             print(f'Length of cluster: {len(cluster)}')
 
 
+# Function to rank the candidates based on their similarity to the project's skillset vector
 async def get_ranked_candidates(project_vector):
     # Cluster projects
     await cluster_candidates()
@@ -96,12 +100,13 @@ async def get_ranked_candidates(project_vector):
     return ranked_candidates
 
 
+# Function to get candidates' recommendations for a project
 async def get_candidates_recommendations(project_id):
     async with get_session() as session:
         # Retrieve skillsets vector from databases
         project_skillset_vector = await get_project_skillset(project_id)
 
-        # Get ranked items
+        # Get ranked candidates based on project's skillset vector
         ranked_candidates = await get_ranked_candidates(project_skillset_vector)
 
         return ranked_candidates

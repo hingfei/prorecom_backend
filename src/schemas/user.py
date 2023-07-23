@@ -8,11 +8,13 @@ from datetime import datetime, timedelta
 from decouple import config
 import bcrypt
 
+# Load JWT secret and algorithm from environment variables
 JWT_SECRET = config('secret')
 JWT_ALGORITHM = config('algorithm')
 EXPIRATION_TIME = timedelta(minutes=60)
 
 
+# Function to decode a JWT token
 def decode_token(token: str):
     try:
         payload = decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -21,6 +23,7 @@ def decode_token(token: str):
         raise Exception("Invalid token")
 
 
+# User type definition
 @strawberry.type
 class UserType:
     user_id: strawberry.ID
@@ -39,6 +42,7 @@ class UserType:
         return token
 
 
+# User class representing a user
 @strawberry.type
 class User:
     user_id: strawberry.ID
@@ -58,6 +62,7 @@ class User:
         )
 
 
+# Types for different response scenarios
 @strawberry.type
 class UserExists:
     message: str = "User with this name already exist"
@@ -78,6 +83,7 @@ class UserDeleteMessage:
     message: str = "User deleted successfully"
 
 
+# Response type for user-related queries
 @strawberry.type
 class UserResponse:
     success: bool
@@ -85,6 +91,7 @@ class UserResponse:
     message: Optional[str]
 
 
+# Response type for authentication-related queries
 @strawberry.type
 class AuthResponse:
     success: bool
@@ -93,14 +100,16 @@ class AuthResponse:
     message: Optional[str]
 
 
-# Responses
+# Union types for different response scenarios
 AddUserResponse = strawberry.union("AddUserResponse", (User, UserExists))
 UpdateUserResponse = strawberry.union("UpdateUserResponse", (UserUpdateMessage, UserNotFound))
 DeleteUserResponse = strawberry.union("DeleteUserResponse", (UserDeleteMessage, UserNotFound))
 
 
+# Query type for GraphQL operations
 @strawberry.type
 class Query:
+    # Get the current user's details
     @strawberry.field
     async def me(self, info: Info) -> UserType:
         async with get_session() as session:
@@ -124,6 +133,7 @@ class Query:
             except SessionExpired:
                 raise ValueError("Session has expired")
 
+    # Get user details by user_id
     @strawberry.field
     async def user_detail(self, info: Info, user_id: int) -> Optional[User]:
         async with get_session() as s:
@@ -131,6 +141,7 @@ class Query:
             db_user = (await s.execute(user_query)).scalars().first()
             return User.marshal(db_user) if db_user else None
 
+    # Get a list of all users
     @strawberry.field
     async def user_listing(self) -> List[User]:
         async with get_session() as s:
@@ -139,8 +150,10 @@ class Query:
         return [User.marshal(loc) for loc in db_user]
 
 
+# Mutation type for GraphQL operations
 @strawberry.type
 class Mutation:
+    # Create a new user
     @strawberry.mutation
     async def create_user(self, user_name: str, user_email: str, password: str) -> AddUserResponse:
         async with get_session() as s:
@@ -153,6 +166,7 @@ class Mutation:
             await s.commit()
         return User.marshal(db_user)
 
+    # Update user details
     @strawberry.mutation
     async def update_user(self, user_id: int, user_name: Optional[str] = None, user_email: Optional[str] = None,
                           password: Optional[str] = None) -> UpdateUserResponse:
@@ -172,6 +186,7 @@ class Mutation:
 
         return UserUpdateMessage(message=f"User with id {user_id} updated successfully")
 
+    # Delete a user
     @strawberry.mutation
     async def delete_user(self, user_id: int) -> DeleteUserResponse:
         async with get_session() as s:
@@ -186,6 +201,7 @@ class Mutation:
 
         return UserDeleteMessage
 
+    # User login
     @strawberry.mutation
     async def login(self, user_name: str, password: str) -> AuthResponse:
         async with get_session() as s:
@@ -196,7 +212,7 @@ class Mutation:
                     return AuthResponse(success=False, token=None, user=None, message='Account not found')
                 if not bcrypt.checkpw(password.encode('utf-8'), db_user.password.encode('utf-8')):
                     return AuthResponse(success=False, token=None, user=None, message='Password is incorrect')
-                
+
                 user = UserType(
                     user_id=db_user.user_id,
                     user_name=db_user.user_name,

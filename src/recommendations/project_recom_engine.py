@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from conn import get_session, JobSeeker as JobSeekerModel, Project as ProjectModel
 
 
+# Function to retrieve the skillset vector of a job seeker with the given seeker_id
 async def get_user_skillsets(seeker_id):
     async with get_session() as session:
         sql = select(JobSeekerModel).options(selectinload(JobSeekerModel.users)).where(
@@ -22,6 +23,7 @@ async def get_user_skillsets(seeker_id):
         return user_skillset_vector
 
 
+# Function to retrieve skillset vectors of projects with their project_ids
 async def get_projects_skillsets():
     async with get_session() as session:
         sql = select(ProjectModel).where(ProjectModel.project_status == True)
@@ -36,6 +38,7 @@ async def get_projects_skillsets():
         return projects_skillset_vectors
 
 
+# Function to preprocess skillsets by converting to lowercase and removing symbols
 def preprocess_skillsets(skillsets):
     user_skillset = False
     preprocessed_skillsets = []
@@ -62,6 +65,7 @@ def preprocess_skillsets(skillsets):
     return preprocessed_skillsets
 
 
+# Function to cluster projects based on their skillset vectors
 async def cluster_projects(refresh=False):
     if settings.project_clusters is None or refresh:
         print('clustering projects')
@@ -82,6 +86,7 @@ async def cluster_projects(refresh=False):
             print(f'Length of cluster: {len(cluster)}')
 
 
+# Function to rank the projects based on their similarity to the user's skillset vector
 async def get_ranked_projects(user_vector):
     # Cluster projects
     await cluster_projects()
@@ -113,12 +118,13 @@ async def get_ranked_projects(user_vector):
     return ranked_projects
 
 
+# Function to get projects' recommendations for a job seeker with the given seeker_id
 async def get_projects_recommendations(seeker_id):
     async with get_session() as session:
         # Retrieve skillsets vector from databases
         user_skillset_vector = await get_user_skillsets(seeker_id)
 
-        # Get ranked items
+        # Get ranked projects based on the user's skillset vector
         ranked_projects = await get_ranked_projects(user_skillset_vector)
 
         return ranked_projects

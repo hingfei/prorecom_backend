@@ -14,6 +14,7 @@ import src.settings as settings
 import bcrypt
 
 
+# Input class for creating a new company
 @strawberry.input
 class CreateCompanyInput:
     user_name: str
@@ -28,6 +29,7 @@ class CreateCompanyInput:
     company_state: Optional[str]
 
 
+# Input class for updating company information
 @strawberry.input
 class UpdateCompanyInput:
     company_id: strawberry.ID
@@ -43,6 +45,7 @@ class UpdateCompanyInput:
     company_state: Optional[str] = None
 
 
+# Type definition for the project listing
 @strawberry.type
 class ProjectListingType:
     project_id: strawberry.ID
@@ -59,6 +62,7 @@ class ProjectListingType:
     skills: List[SkillType]
 
 
+# Type definition for the company
 @strawberry.type
 class CompanyType:
     company_id: strawberry.ID
@@ -74,6 +78,7 @@ class CompanyType:
     projects: Optional[List[ProjectListingType]]
 
 
+# Type definition for the company response
 @strawberry.type
 class CompanyResponse:
     success: bool
@@ -81,8 +86,10 @@ class CompanyResponse:
     message: Optional[str]
 
 
+# Type definition for the Query class
 @strawberry.type
 class Query:
+    # Query to get company details by company_id
     @strawberry.field
     async def company_detail(self, info: Info, company_id: int) -> Optional[CompanyType]:
         async with get_session() as session:
@@ -94,6 +101,7 @@ class Query:
             company = result.scalars().first()
             return company if company else None
 
+    # Query to get a list of all companies
     @strawberry.field
     async def company_listing(self, info: Info) -> List[CompanyType]:
         async with get_session() as session:
@@ -103,8 +111,10 @@ class Query:
             return company.scalars().unique().all()
 
 
+# Type definition for the Mutation class
 @strawberry.type
 class Mutation:
+    # Mutation to create a new company
     @strawberry.mutation
     async def create_company(self, input: CreateCompanyInput) -> CompanyResponse:
 
@@ -150,6 +160,7 @@ class Mutation:
                 # Return an error response with the error message
                 return CompanyResponse(success=False, company=None, message=str(e))
 
+    # Mutation to update company information
     @strawberry.mutation
     async def update_company(self, input: UpdateCompanyInput) -> CompanyResponse:
 
@@ -160,6 +171,7 @@ class Mutation:
                 return CompanyResponse(success=False, company=None,
                                        message=f"Account not found.")
 
+            # Update the company information if provided
             if input.user_name is not None:
                 company.user_name = input.user_name
             if input.user_email is not None:
@@ -187,17 +199,19 @@ class Mutation:
             except Exception as e:
                 return CompanyResponse(success=False, company=None, message=str(e))
 
+    # Mutation to delete a company
     @strawberry.mutation
     async def delete_company(self, info: Info, company_id: int) -> CompanyResponse:
         async with get_session() as session:
             try:
-                # delete job seeker from the database
+                # Delete the company from the database
                 delete_query = delete(CompanyModel).where(CompanyModel.company_id == company_id)
                 deleted_company = await session.execute(delete_query)
                 if deleted_company.rowcount == 0:
                     return CompanyResponse(success=False, company=None,
                                            message=f"Account not found.")
                 else:
+                    # Also delete associated user record
                     delete_query = delete(UserModel).where(UserModel.user_id == company_id)
                     await session.execute(delete_query)
 
@@ -209,6 +223,7 @@ class Mutation:
                 # Return an error response with the error message
                 return CompanyResponse(success=False, message=str(e))
 
+    # Mutation to update company password
     @strawberry.mutation
     async def update_company_password(self, info: Info, current_password: str,
                                       new_password: str, user_id: int) -> CompanyResponse:
@@ -238,6 +253,7 @@ class Mutation:
                 # Return an error response with the error message
                 return CompanyResponse(success=False, message=str(e))
 
+    # Mutation to upload a company profile picture
     @strawberry.mutation
     async def upload_company_profile_pic(self, user_id: int, profile_pic: Upload) -> CompanyResponse:
         async with get_session() as session:
@@ -268,7 +284,7 @@ class Mutation:
                 company.company_profile_pic = unique_filename
                 await session.commit()
 
-                return CompanyResponse(success=True,  message="Profile picture uploaded successfully")
+                return CompanyResponse(success=True, message="Profile picture uploaded successfully")
 
             except Exception as e:
                 # Handle the error and return an appropriate response

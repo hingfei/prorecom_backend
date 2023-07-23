@@ -5,6 +5,7 @@ from strawberry.types import Info
 from conn import get_session, Education as EducationModel
 
 
+# Input class for creating or updating education details
 @strawberry.input
 class EducationInput:
     education_id: Optional[strawberry.ID] = None
@@ -16,6 +17,7 @@ class EducationInput:
     grade: Optional[str] = None
 
 
+# Type definition for the Education
 @strawberry.type
 class EducationType:
     education_id: strawberry.ID
@@ -27,14 +29,17 @@ class EducationType:
     grade: Optional[str]
 
 
+# Type definition for the Education response
 @strawberry.type
 class EducationResponse:
     success: bool
     message: Optional[str]
 
 
+# Type definition for the Query class
 @strawberry.type
 class Query:
+    # Query to get a list of all educations
     @strawberry.field
     async def education_listing(self, info: Info) -> List[EducationType]:
         async with get_session() as session:
@@ -43,8 +48,10 @@ class Query:
             return educations.scalars().unique().all()
 
 
+# Type definition for the Mutation class
 @strawberry.type
 class Mutation:
+    # Mutation to delete an education entry
     @strawberry.mutation
     async def delete_education(self, info: Info, education_id: strawberry.ID) -> EducationResponse:
         async with get_session() as session:

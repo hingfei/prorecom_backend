@@ -2,13 +2,13 @@ from datetime import datetime
 from typing import Optional, List
 
 import strawberry
-from jwt import InvalidTokenError, ExpiredSignatureError
 from sqlalchemy import select, func
 from strawberry.types import Info
 
 from conn import get_session, Notification as NotificationModel
 
 
+# Input class for sending a notification
 @strawberry.input
 class SendNotificationInput:
     sender_id: int
@@ -16,6 +16,7 @@ class SendNotificationInput:
     message: str
 
 
+# Type definition for the Notification
 @strawberry.type
 class NotificationType:
     notification_id: strawberry.ID
@@ -26,6 +27,7 @@ class NotificationType:
     created_at: Optional[datetime]
 
 
+# Type definition for the UserNotificationCountType
 @strawberry.type
 class UserNotificationCountType:
     success: bool
@@ -34,6 +36,7 @@ class UserNotificationCountType:
     notifications: Optional[List[NotificationType]] = None
 
 
+# Type definition for the Notification response
 @strawberry.type
 class NotificationResponse:
     success: bool
@@ -41,8 +44,10 @@ class NotificationResponse:
     message: Optional[str]
 
 
+# Type definition for the Query class
 @strawberry.type
 class Query:
+    # Query to get user notifications
     @strawberry.field
     async def get_user_notifications(self, info: Info,
                                      unread_only: Optional[bool] = False) -> UserNotificationCountType:
@@ -69,9 +74,6 @@ class Query:
 
                     notifications = await session.execute(query.order_by(NotificationModel.created_at.desc()))
 
-                    # query = query.order_by(NotificationModel.created_at.desc())
-                    # notifications = await session.execute(query)
-
                     return UserNotificationCountType(
                         success=True,
                         unread_count=unread_count.scalar(),
@@ -89,8 +91,10 @@ class Query:
                 )
 
 
+# Type definition for the Mutation class
 @strawberry.type
 class Mutation:
+    # Mutation to send a notification
     @strawberry.mutation
     async def send_notification(self, input: SendNotificationInput) -> NotificationResponse:
         async with get_session() as session:
@@ -105,6 +109,7 @@ class Mutation:
             except Exception as e:
                 return NotificationResponse(success=False, message=str(e))
 
+    # Mutation to mark a notification as read
     @strawberry.mutation
     async def mark_notification_as_read(self, notification_id: int) -> NotificationResponse:
         async with get_session() as session:

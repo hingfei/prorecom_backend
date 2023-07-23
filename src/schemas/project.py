@@ -17,6 +17,7 @@ from src.schemas.job_seeker import JobSeekerType
 from src.schemas.skill import SkillType
 
 
+# Input class for creating a new project
 @strawberry.input
 class CreateProjectInput:
     project_name: str
@@ -31,6 +32,7 @@ class CreateProjectInput:
     skills: List[int]
 
 
+# Input class for updating an existing project
 @strawberry.input
 class UpdateProjectInput:
     project_id: strawberry.ID
@@ -45,6 +47,7 @@ class UpdateProjectInput:
     skills: Optional[List[int]] = None
 
 
+# Type definition for a Project Application
 @strawberry.type
 class ProjectApplicationType:
     project_application_id: strawberry.ID
@@ -55,6 +58,7 @@ class ProjectApplicationType:
     job_seeker: Optional[JobSeekerType]
 
 
+# Type definition for a Project
 @strawberry.type
 class ProjectType:
     project_id: strawberry.ID
@@ -74,11 +78,13 @@ class ProjectType:
     similarity_score: Optional[float] = None
 
 
+# Type definition for a modified Project (used in response after creating or updating a project)
 @strawberry.type
 class ProjectModifyType:
     project_id: strawberry.ID
 
 
+# Type definition for the response
 @strawberry.type
 class ProjectResponse:
     success: bool
@@ -86,6 +92,7 @@ class ProjectResponse:
     message: Optional[str] = None
 
 
+# Type definition for the response after creating, updating, or deleting a project
 @strawberry.type
 class ProjectModifyResponse:
     success: bool
@@ -93,8 +100,10 @@ class ProjectModifyResponse:
     message: Optional[str] = None
 
 
+# Type definition for the Query class
 @strawberry.type
 class Query:
+    # Function to get the details of a specific project
     @strawberry.field
     async def project_detail(self, project_id: int) -> Optional[ProjectType]:
         async with get_session() as session:
@@ -106,6 +115,7 @@ class Query:
             result = await session.execute(query)
             return result.scalar_one() if result else None
 
+    # Function to get a list of projects (can include recommendations)
     @strawberry.field
     async def project_listing(self, info: Info, recommendation: Optional[bool] = False) -> List[ProjectType]:
         async with get_session() as session:
@@ -142,12 +152,13 @@ class Query:
                 ).where(ProjectModel.project_status == True).order_by(func.random())
                 results = await session.execute(query)
                 projects = results.scalars().unique().all()
-                
+
                 for project in projects:
                     project.similarity_score = None
-                    
+
                 return projects
 
+    # Function to search for projects based on a search keyword
     @strawberry.field
     async def search_projects(self, search_keyword: str) -> List[ProjectType]:
         async with get_session() as session:
@@ -166,12 +177,13 @@ class Query:
             )
             result = await session.execute(query)
             projects = result.scalars().all()
-            
+
             for project in projects:
                 project.similarity_score = None
 
             return projects
 
+    # Function to get a list of projects belonging to a specific company
     @strawberry.field
     async def company_project_listing(self, company_id: int) -> List[Optional[ProjectType]]:
         async with get_session() as session:
@@ -186,8 +198,10 @@ class Query:
             return projects if projects else []
 
 
+# Type definition for the Mutation class
 @strawberry.type
 class Mutation:
+    # Mutation to create a new project
     @strawberry.mutation
     async def create_project(self, input: CreateProjectInput) -> ProjectModifyResponse:
 
@@ -246,6 +260,7 @@ class Mutation:
                 # Return an error response with the error message
                 return ProjectModifyResponse(success=False, message=str(e))
 
+    # Mutation to update an existing project
     @strawberry.mutation
     async def update_project(self, input: UpdateProjectInput) -> ProjectModifyResponse:
         async with get_session() as session:
@@ -303,6 +318,7 @@ class Mutation:
             except Exception as e:
                 return ProjectModifyResponse(success=False, project=None, message=str(e))
 
+    # Mutation to delete a project
     @strawberry.mutation
     async def delete_project(self, info: Info, project_id: int) -> ProjectModifyResponse:
         async with get_session() as session:

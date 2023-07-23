@@ -14,19 +14,27 @@ import numpy as np
 import csv
 import re
 
+# SQLALCHEMY_DATABASE_URL: Connection URL for the SQLite database
+# metadata: An instance of MetaData to hold database schema information
+# engine: SQLAlchemy engine to connect to the database
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 metadata = MetaData()
 # echo = True to traceback the data queries
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+
+# async_sessionmaker: An async sessionmaker to create an asynchronous session with the database
 async_sessionmaker = sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,
     autocommit=False,
 )
+
+# Base: The declarative base for the SQLAlchemy models
 Base = declarative_base()
 
 
+# User model representing the base table for users
 class User(Base):
     __tablename__ = "users"
     user_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -37,6 +45,7 @@ class User(Base):
     __mapper_args__ = {"polymorphic_on": user_type, 'polymorphic_identity': 'users'}
 
 
+# JobSeekerSkills model representing the association table for job seekers' skills
 class JobSeekerSkills(Base):
     __tablename__ = 'job_seeker_skills'
 
@@ -51,6 +60,7 @@ job_seeker_skills = Table('job_seeker_skills', Base.metadata,
                           )
 
 
+# ProjectApplication model representing the table for project applications
 class ProjectApplication(Base):
     __tablename__ = "project_applications"
     project_application_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -64,6 +74,7 @@ class ProjectApplication(Base):
     project = relationship("Project", backref="project_applications")
 
 
+# JobSeeker model representing the table for job seekers, inheriting from the User model
 class JobSeeker(User):
     __tablename__ = "job_seekers"
     seeker_id: int = Column(Integer, ForeignKey("users.user_id"), primary_key=True)
@@ -87,6 +98,7 @@ class JobSeeker(User):
     __mapper_args__ = {"polymorphic_identity": "job_seekers"}
 
 
+# Company model representing the table for companies, inheriting from the User model
 class Company(User):
     __tablename__ = "companies"
     company_id: int = Column(Integer, ForeignKey("users.user_id"), primary_key=True)
@@ -102,6 +114,7 @@ class Company(User):
     __mapper_args__ = {"polymorphic_identity": "companies"}
 
 
+# Education model representing the table for job seeker's education
 class Education(Base):
     __tablename__ = "educations"
     education_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -115,6 +128,7 @@ class Education(Base):
     job_seeker = relationship("JobSeeker", back_populates="educations")
 
 
+# Notification model representing the table for notifications
 class Notification(Base):
     __tablename__ = "notifications"
     notification_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -125,6 +139,7 @@ class Notification(Base):
     created_at: datetime = Column(DateTime, default=datetime.utcnow)
 
 
+# ProjectSkills model representing the association table for project skills
 class ProjectSkills(Base):
     __tablename__ = 'project_skills'
 
@@ -139,6 +154,7 @@ project_skills = Table('project_skills', Base.metadata,
                        )
 
 
+# Project model representing the table for projects
 class Project(Base):
     __tablename__ = "projects"
     project_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -161,12 +177,15 @@ class Project(Base):
     )
 
 
+# Skill model representing the table for skills
 class Skill(Base):
     __tablename__ = "skills"
     skill_id: int = Column(Integer, primary_key=True, autoincrement=True)
     skill_name: str = Column(String, nullable=False, unique=True)
 
 
+# The get_session function is an async context manager that provides a session to interact with the database.
+# It is used with the 'async with' statement to handle asynchronous database operations.
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_sessionmaker() as session:
@@ -187,7 +206,7 @@ async def _async_main():
     await engine.dispose()
 
 
-# Load Dataset
+# Utility function to preprocess skillsets by converting them to lowercase, removing symbols, and splitting skills.
 def preprocess_skillsets(skillsets):
     user_skillset = False
     preprocessed_skillsets = []
@@ -214,6 +233,7 @@ def preprocess_skillsets(skillsets):
     return preprocessed_skillsets
 
 
+# Utility function to preprocess salary values and convert them to integers.
 def preprocess_salary(salary):
     if salary.lower() == 'undisclosed':
         return None, None
@@ -231,6 +251,7 @@ def preprocess_salary(salary):
     return min_salary, max_salary
 
 
+# Utility function to preprocess post dates and convert them to datetime objects.
 def preprocess_post_dates(date_string):
     current_date = datetime.now()
 
@@ -250,6 +271,7 @@ def preprocess_post_dates(date_string):
     return converted_date.strftime('%m-%d-%Y')
 
 
+# The import_skills_from_csv function imports skills from a CSV file and saves them to the database.
 async def import_skills_from_csv():
     skills = []
 
@@ -269,6 +291,7 @@ async def import_skills_from_csv():
     print(f'Skills imported from skill_list.csv and saved to the database successfully.')
 
 
+# The import_csv function imports project data from a CSV file and saves them to the database.
 async def import_csv():
     settings.load_fasttext_model()
     with open('projects_list.csv', encoding='utf-8') as file:
@@ -337,6 +360,7 @@ async def import_csv():
             await session.commit()
 
 
+# The add_column function is used for database migration purposes to add a new column to the existing tables.
 async def add_column():
     async with get_session() as session:
         # Migrate the database as needed

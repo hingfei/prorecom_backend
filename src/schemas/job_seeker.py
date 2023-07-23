@@ -20,6 +20,7 @@ import src.settings as settings
 import numpy as np
 
 
+# Input class for creating a job seeker
 @strawberry.input
 class CreateJobSeekerInput:
     user_name: str
@@ -37,6 +38,7 @@ class CreateJobSeekerInput:
     seeker_about: Optional[str] = None
 
 
+# Input class for updating a job seeker
 @strawberry.input
 class UpdateJobSeekerInput:
     seeker_id: strawberry.ID
@@ -58,6 +60,7 @@ class UpdateJobSeekerInput:
     educations: Optional[List[EducationInput]] = None
 
 
+# Type definition for the JobSeeker
 @strawberry.type
 class JobSeekerType:
     seeker_id: strawberry.ID
@@ -79,6 +82,7 @@ class JobSeekerType:
     similarity_score: Optional[float] = None
 
 
+# Type definition for the JobSeeker response
 @strawberry.type
 class JobSeekerResponse:
     success: bool
@@ -86,8 +90,10 @@ class JobSeekerResponse:
     message: Optional[str]
 
 
+# Type definition for the Query class
 @strawberry.type
 class Query:
+    # Query to get job seeker details based on seeker id
     @strawberry.field
     async def job_seeker_detail(self, info: Info, seeker_id: int) -> Optional[JobSeekerType]:
         async with get_session() as session:
@@ -99,6 +105,7 @@ class Query:
             job_seeker = result.scalars().first()
             return job_seeker if job_seeker else None
 
+    # Query to get job seeker listing
     @strawberry.field
     async def job_seeker_listing(self, info: Info) -> List[JobSeekerType]:
         async with get_session() as session:
@@ -108,6 +115,7 @@ class Query:
             job_seekers = await session.execute(sql)
             return job_seekers.scalars().unique().all()
 
+    # Query to search job seekers based on keywords
     @strawberry.field
     async def search_job_seekers(self, info: Info, search_keyword: str) -> List[JobSeekerType]:
         async with get_session() as session:
@@ -137,6 +145,7 @@ class Query:
 
             return job_seekers
 
+    # Query to get recommended job seeker listing based on project id
     @strawberry.field
     async def recommended_job_seeker_listing(self, info: Info, project_id: int) -> List[JobSeekerType]:
         async with get_session() as session:
@@ -166,8 +175,10 @@ class Query:
             return ordered_job_seekers
 
 
+# Type definition for the Mutation class
 @strawberry.type
 class Mutation:
+    # Mutation to create a job seeker
     @strawberry.mutation
     async def create_job_seeker(self, input: CreateJobSeekerInput) -> JobSeekerResponse:
 
@@ -216,6 +227,7 @@ class Mutation:
                 # Return an error response with the error message
                 return JobSeekerResponse(success=False, job_seeker=None, message=str(e))
 
+    # Mutation to update a job seeker
     @strawberry.mutation
     async def update_job_seeker(self, input: UpdateJobSeekerInput) -> JobSeekerResponse:
 
@@ -318,6 +330,7 @@ class Mutation:
             except Exception as e:
                 return JobSeekerResponse(success=False, job_seeker=None, message=str(e))
 
+    # Mutation to delete a job seeker
     @strawberry.mutation
     async def delete_job_seeker(self, info: Info, seeker_id: int) -> JobSeekerResponse:
         async with get_session() as session:
@@ -341,6 +354,7 @@ class Mutation:
                 # Return an error response with the error message
                 return JobSeekerResponse(success=False, job_seeker=None, message=str(e))
 
+    # Mutation to update a job seeker's password
     @strawberry.mutation
     async def update_job_seeker_password(self, info: Info, current_password: str,
                                          new_password: str, user_id: int) -> JobSeekerResponse:
@@ -370,6 +384,7 @@ class Mutation:
                 # Return an error response with the error message
                 return JobSeekerResponse(success=False, job_seeker=None, message=str(e))
 
+    # Mutation to upload a job seeker's resume
     @strawberry.mutation
     async def upload_resume(self, seeker_id: int, seeker_resume: Upload) -> JobSeekerResponse:
         async with get_session() as session:
@@ -407,6 +422,7 @@ class Mutation:
                 # Handle the error and return an appropriate response
                 return JobSeekerResponse(success=False, job_seeker=None, message=str(e))
 
+    # Mutation to upload a job seeker's profile picture
     @strawberry.mutation
     async def upload_seeker_profile_pic(self, user_id: int, profile_pic: Upload) -> JobSeekerResponse:
         async with get_session() as session:
